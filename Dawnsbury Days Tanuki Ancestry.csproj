@@ -10,12 +10,12 @@
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DebugType>portable</DebugType>
-    <NoWarn>1701;1702;CA1416</NoWarn>
+    <NoWarn>1701;1702;CA1416;CS1998</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <DebugType>portable</DebugType>
-    <NoWarn>1701;1702;CA1416</NoWarn>
+    <NoWarn>1701;1702;CA1416;CS1998</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
