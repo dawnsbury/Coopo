@@ -34,7 +34,50 @@ namespace Dawnsbury_Days_Tanuki_Ancestry
         [DawnsburyDaysModMainMethod]
         public static void ModEntry()
         {
-            Debugger.Launch();
+            //Debugger.Launch();
+
+            ModManager.RegisterNewSpell("Friendfear", 1, (SpellId spellId, Creature? caster, int spellLevel, bool inCombat, SpellInformation spellInfo) =>
+            {
+                return Spells.CreateModern(IllustrationName.Fear, "Friendfear", new Trait[8]
+                {
+                Trait.Emotion,
+                Trait.Enchantment,
+                Trait.Fear,
+                Trait.Mental,
+                Trait.Arcane,
+                Trait.Divine,
+                Trait.Occult,
+                Trait.Primal
+                }, "You plant fear in the target (including your friends).", "The target makes a Will save." + S.FourDegreesOfSuccess("The target is unaffected.", "The target is frightened 1.", "The target is frightened 2.", "The target is frightened 3 and fleeing for 1 round."),
+                Target.RangedFriend(6), spellLevel, SpellSavingThrow.Standard(Defense.Will))
+                .WithSoundEffect(SfxName.Fear)
+                    .WithEffectOnEachTarget(async delegate (CombatAction spell, Creature caster, Creature target, CheckResult checkResult)
+                    {
+                        int num2;
+                        switch (checkResult)
+                        {
+                            case CheckResult.CriticalSuccess:
+                                return;
+                            case CheckResult.Success:
+                                num2 = 1;
+                                break;
+                            case CheckResult.Failure:
+                                num2 = 2;
+                                break;
+                            case CheckResult.CriticalFailure:
+                                num2 = 3;
+                                break;
+                            default:
+                                num2 = 0;
+                                break;
+                        }
+
+                        int value = num2;
+                        target.AddQEffect(QEffect.Frightened(value));
+                        target.AddQEffect(QEffect.Fleeing(caster).WithExpirationAtStartOfSourcesTurn(caster, 1));
+                    });
+            });
+
             TanukiTrait = ModManager.RegisterTrait("Tanuki", new TraitProperties("Tanuki", true) { IsAncestryTrait = true });
 
             Feat TanukiAncestry = new AncestrySelectionFeat(
@@ -49,52 +92,10 @@ namespace Dawnsbury_Days_Tanuki_Ancestry
                     new FreeAbilityBoost()
                 ],
                 GetHeritages().ToList()).WithAbilityFlaw(Ability.Wisdom);
-            /*.WithOnCreature((CalculatedCharacterSheetValues sheet, Creature cr) =>
-            {
-                cr.AddQEffect(new QEffect("Change Shape", "Transform into a mundane raccoon dog, using the statistics of pest form.")
-                {
-                    ProvideMainAction = (QEffect ef) =>
-                    {
-                        CombatAction action = new CombatAction(cr, IllustrationName.WildShape, "Change Shape",
-                            [TanukiTrait, Trait.Concentrate, Trait.Polymorph, Trait.Primal],
-                            "description", Target.Self())
-                        .WithActionCost(1)
-                        .WithEffectOnSelf((Creature self) =>
-                        {
-                            QEffect effect = CommonSpellEffects.EnterBattleform(self, IllustrationName.Dawnsbury, 15 + self.ProficiencyLevel, 4, false);
-                            effect.StateCheck = (Action<QEffect>)Delegate.Combine(effect.StateCheck, (Action<QEffect>)delegate (QEffect qfForm)
-                            {
-                                qfForm.Owner.WeaknessAndResistance.AddWeakness(DamageKind.Bludgeoning, 5);
-                                qfForm.Owner.WeaknessAndResistance.AddWeakness(DamageKind.Slashing, 5);
-                                qfForm.Owner.WeaknessAndResistance.AddWeakness(DamageKind.Piercing, 5);
-                            });
-                        });
-                        return new ActionPossibility(action);
-                    }
-                });
-            });*/
 
             ModManager.AddFeat(TanukiAncestry);
 
             AddFeats(GetAncestryFeats());
-
-            ModManager.RegisterNewSpell("Test Fleeing", 1, (SpellId spellId, Creature? spellcaster, int spellLevel, bool inCombat, SpellInformation spellInfo) =>
-            {
-                return Spells.CreateModern(IllustrationName.Fear, "Test Fleeing", [
-                Trait.Emotion,
-                Trait.Enchantment,
-                Trait.Fear,
-                Trait.Mental,
-                Trait.Arcane,
-                Trait.Divine,
-                Trait.Occult,
-                Trait.Primal],
-                "You ask the target nicely to gain the fleeing condition.", "The target automatically gains the fleeing condition for 3 turns.", Target.FifteenFootCone(), spellLevel, null)
-                    .WithEffectOnEachTarget(async (CombatAction spell, Creature caster, Creature target, CheckResult checkResult) =>
-                    {
-                        target.AddQEffect(QEffect.Fleeing(caster).WithExpirationAtStartOfSourcesTurn(caster, 3));
-                    });
-            });
         }
 
         static void AddFeats(IEnumerable<Feat> feats)
@@ -232,35 +233,6 @@ namespace Dawnsbury_Days_Tanuki_Ancestry
                     });
                 });
 
-            // as for implementation...
-            // the fleeing condition doesnt do anything by itself. it acts as a tag, which the forcedactions code checks for. therefore, perhaps it would be a good solution
-            // to check for the condition on the start of each turn and remove it for a single action, if possible.
-
-            // Dawnsbury.Core.Mechanics.Core.ForcedActions
-
-            // current plan - when gaining fleeing, replace with a new condition called "Courageous Flee" (or similar). This SHOULD NOT share an id with fleeing or fleeingfromdanger,
-            // so that forced movement isnt applied, but after an action is taken with that condition, it should inflict real fleeing (probably hidden) for the rest of the turn.
-            //yield return new HeritageSelectionFeat(
-            //    ModManager.RegisterFeatName("Courageous Tanuki"),
-            //    "Your heart beats with the courage of those who came before you, giving you the kind of bravery only a tanuki can demonstrate.",
-            //    "Whenever you gain the fleeing condition, you also gain a +10-foot circumstance bonus to your Speed. When you have the fleeing condition, instead of having to spend all your actions trying to escape, you can act normally for one action but must still spend the remainder of your actions fleeing. You also gain the Tactical Retreat ability."
-            //    ).WithPermanentQEffect("When you are fleeing, you gain a +10-foot speed bonus and you can take 1 action per turn normally.", (QEffect effect) =>
-            //    {
-            //        effect.YouAcquireQEffect = (QEffect qe, QEffect recieved) =>
-            //        {
-            //            if (recieved.Id == QEffectId.Fleeing)
-            //            {
-            //                if (recieved.Source == null)
-            //                {
-            //                    qe.Owner.Occupies.Overhead("recieved.Source was null!!!", Color.Red);
-            //                    return recieved;
-            //                }
-            //                //return CourageousFleeing(recieved.Source, recieved.ExpiresAt);
-            //                return QEffect.Frightened(50);
-            //            }
-            //            else return recieved;
-            //        };
-            //    });
             yield return new HeritageSelectionFeat(
                 ModManager.RegisterFeatName("Courageous Tanuki"),
                 "Your heart beats with the courage of those who came before you, giving you the kind of bravery only a tanuki can demonstrate.",
@@ -270,39 +242,49 @@ namespace Dawnsbury_Days_Tanuki_Ancestry
                     cr.AddQEffect(new QEffect("Courageous Tanuki", "When you are fleeing, you gain a +10-foot speed bonus and you can take 1 action per turn normally.")
                     {
                         Innate = true,
-                        YouAcquireQEffect = (QEffect qe, QEffect recieved) =>
+                        YouAcquireQEffect = (QEffect self, QEffect recieved) =>
                         {
-                            if (recieved.Id == QEffectId.Fleeing)
+                            // Hide the overhead for Fleeing conditions, since the courageous fleeing condition shows its own
+                            if (recieved.Id == QEffectId.Fleeing) recieved.DoNotShowUpOverhead = true;
+                            return recieved;
+                        },
+                        StateCheck = (QEffect self) =>
+                        {
+                            // If the character has fleeing, replace it with courageous fleeing...
+                            QEffect? fleeing = self.Owner.FindQEffect(QEffectId.Fleeing);
+                            if (fleeing != null && fleeing.Source != null)
                             {
-                                //return CourageousFleeing(recieved.Source, recieved.ExpiresAt);
-                                return QEffect.Frightened(2);
+                                // ... but if the fleeing is tagged by courageous fleeing, then don't.
+                                if (fleeing.Tag?.GetType() == typeof(string) && (string)fleeing.Tag == "Fleeing (Courageously)") return;
+                                self.Owner.AddQEffect(CourageousFleeing(fleeing.Source, fleeing.ExpiresAt));
+                                fleeing.ExpiresAt = ExpirationCondition.Immediately;
                             }
-                            else return recieved;
                         }
                     });
                 });
         }
 
-        // RESUME HERE RESUME HERE
-        // i have no idea how to actually test if this works? theres not many ways to get fleeing. maybe just make a spell that automatically inflicts fleeing for 3 rounds, just to test
         static QEffect CourageousFleeing(Creature sourceOfFear, ExpirationCondition expiresAt)
         {
-            return new QEffect("Courageous Fleeing", "description", expiresAt, sourceOfFear, IllustrationName.Fleeing)
+            return new QEffect($"Fleeing {sourceOfFear} (Courageously)", "You can spend one action normally, then must spend the rest moving away from the source of your fear as expediently as possible.", expiresAt, sourceOfFear, IllustrationName.Fleeing)
             {
                 CountsAsADebuff = true,
                 AfterYouTakeAction = async (QEffect qe, CombatAction action) =>
                 {
                     if (qe.Owner.Actions.ActionsLeft != 3)
                     {
-                        if (qe.Source == null)
-                        {
-                            qe.Owner.Occupies.Overhead("qe.Source was null!!!", Color.Red);
-                            return;
-                        }
-                        qe.Owner.AddQEffect(QEffect.Fleeing(qe.Source).WithExpirationAtEndOfOwnerTurn());
+                        QEffect tempFleeing = QEffect.Fleeing(qe.Source).WithExpirationAtEndOfOwnerTurn();
+                        tempFleeing.Tag = "Fleeing (Courageously)";
+                        tempFleeing.Illustration = null;
+                        qe.Owner.AddQEffect(tempFleeing);
                     }
                 },
-                BonusToAllSpeeds = (QEffect qe) => new Bonus(2, BonusType.Circumstance, "Courageous Tanuki")
+                BonusToAllSpeeds = (QEffect qe) => new Bonus(2, BonusType.Circumstance, "Courageous Tanuki"),
+                PreventTakingAction = (CombatAction action) =>
+                {
+                    if (action.ActionCost > 1) return "Because you are Fleeing (Courageously), you can only take a single action this turn.";
+                    else return null;
+                }
             };
         }
     }
