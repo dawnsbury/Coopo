@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-    <RootNamespace>Dawnsbury_Days_Tanuki_Ancestry</RootNamespace>
+    <RootNamespace>Dawnsbury.Mods.Ancestries.Tanuki</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PlatformTarget>x64</PlatformTarget>

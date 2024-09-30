@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.11.35303.130
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dawnsbury Days Tanuki Ancestry", "Dawnsbury Days Tanuki Ancestry.csproj", "{F2ED1BAD-90A7-464D-B623-28330B65BC80}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dawnsbury.Mod.Ancestries.Tanuki", "Dawnsbury.Mod.Ancestries.Tanuki/Dawnsbury.Mod.Ancestries.Tanuki.csproj", "{F2ED1BAD-90A7-464D-B623-28330B65BC80}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
