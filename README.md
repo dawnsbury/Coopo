@@ -5,6 +5,7 @@ A mod for Dawnsbury Days which adds some Ancestries that I think are cool. Curre
 * Tanuki
 	* Even-tempered Heritage
 	* Virtuous Heritage
+	* Courageous Heritage	
 	* Iron Belly Feat
 	* Scorched on the Crackling Mountain Feat
 
