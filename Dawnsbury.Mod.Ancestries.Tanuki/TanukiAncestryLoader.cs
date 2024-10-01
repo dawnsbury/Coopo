@@ -248,6 +248,22 @@ public static class TanukiAncestryLoader
                         }
                     }
                 });
+                cr.AddQEffect(new QEffect("Tactical Retreat {icon:Reaction}", "Once per encounter, when you recieve the frightened condition, you can choose to Stride immediately with a +10ft circumstance bonus to speed, as if fleeing.")
+                {
+                    Innate = true,
+                    AfterYouAcquireEffect = async (QEffect self, QEffect recieved) =>
+                    {
+                        if (recieved.Id != QEffectId.Frightened) return;
+                        bool takenReaction = await self.Owner.AskToUseReaction("You have gained the frightened condition.\nDo you want to use {b}Tactical Retreat{/b} to Stride with a +10ft speed bonus?");
+                        if (!takenReaction) return;
+                        //self.Owner.AddQEffect(QEffect.Fleeing(recieved.Source ?? self.Owner).WithExpirationAtStartOfOwnerTurn());
+                        self.Owner.AddQEffect(new QEffect("Retreating", "+10ft bonus to speed while making a Tactical Retreat.")
+                        {
+                            BonusToAllSpeeds = (QEffect qe) => new Bonus(2, BonusType.Circumstance, "Retreating")
+                        }.WithExpirationEphemeral());
+                        await self.Owner.StrideAsync("Choose where to Stride using Tactical Retreat.");
+                    }
+                });
             });
     }
 
