@@ -262,6 +262,7 @@ public static class TanukiAncestryLoader
                             BonusToAllSpeeds = (QEffect qe) => new Bonus(2, BonusType.Circumstance, "Retreating")
                         }.WithExpirationEphemeral());
                         await self.Owner.StrideAsync("Choose where to Stride using Tactical Retreat.");
+                        self.ExpiresAt = ExpirationCondition.Immediately; // only usable once per encounter
                     }
                 });
             });
