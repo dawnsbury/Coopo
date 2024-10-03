@@ -11,6 +11,11 @@ using Dawnsbury.Core;
 using Microsoft.Xna.Framework;
 using Dawnsbury.Core.Roller;
 using System.Diagnostics;
+using Dawnsbury.Core.CharacterBuilder.Spellcasting;
+using Dawnsbury.Core.CharacterBuilder.FeatsDb.Spellbook;
+using Dawnsbury.Core.Mechanics.Targeting;
+using Dawnsbury.Audio;
+using Dawnsbury.Display.Text;
 
 namespace Dawnsbury.Mods.Ancestries.Tanuki;
 
@@ -98,14 +103,14 @@ public static class TanukiAncestryLoader
             ModManager.RegisterFeatName("Iron Belly"),
             1,
             "A good laugh comes from the belly, and by laughing every day, yours has grown quite strong.",
-            "You have a belly melee unarmed Strike, which deals 1d6 damage and has the forceful trait.",
+            "You have a belly melee unarmed Strike, which deals 1d6 damage, is in the brawling group, and has the forceful trait.",
             [TanukiTrait]
             ).WithOnCreature((Creature cr) =>
             {
                 cr.AddQEffect(new QEffect("Iron Belly", "You have a belly attack.")
                 {
                     Innate = true,
-                    AdditionalUnarmedStrike = new Item(IllustrationName.Boneshaker, "belly", [Trait.Forceful, Trait.Weapon, Trait.Melee, Trait.Unarmed])
+                    AdditionalUnarmedStrike = new Item(IllustrationName.Boneshaker, "belly", [Trait.Forceful, Trait.Weapon, Trait.Melee, Trait.Unarmed, Trait.Brawling])
                     .WithWeaponProperties(new WeaponProperties("1d6", DamageKind.Bludgeoning))
                 });
             });
@@ -114,35 +119,14 @@ public static class TanukiAncestryLoader
             ModManager.RegisterFeatName("Scorched on the Crackling Mountain"),
             1,
             "By ritualistically marking your fur with fire, like an infamous tanuki of legend, you protect yourself against future flames. You gain a black stripe down your back that looks charred.",
-            "Your flat check to remove persistent fire damage is DC 10 instead of DC 15. The first time each day you would be reduced to 0 Hit Points by a fire effect, you avoid being knocked out and remain at 1 Hit Point, and your wounded condition increases by 1.",
+            "Your flat check to remove persistent fire damage is reduced by 5, to DC 10 (or DC 5 with assistance). The first time each day you would be reduced to 0 Hit Points by a fire effect, you avoid being knocked out and remain at 1 Hit Point, and your wounded condition increases by 1.",
             [TanukiTrait]
             ).WithOnCreature(delegate (Creature cr)
             {
-                cr.AddQEffect(new QEffect("Scorched Tanuki", "Your flat check to remove persistent fire damage is DC 10.")
+                cr.AddQEffect(new QEffect("Scorched Tanuki", "Your flat check to remove persistent fire damage is DC 10 (DC 5 with assistance).")
                 {
                     Innate = true,
-                    YouAcquireQEffect = (QEffect effect, QEffect recieved) =>
-                    {
-                        if (recieved.Id == QEffectId.PersistentDamage && recieved.Key == $"PersistentDamage:{DamageKind.Fire}")
-                        {
-                            // what a load of horrible jank
-                            var damage = recieved.Name?.Split(' ', 2)[0];
-                            if (damage == null) return recieved;
-                            // replace the end-of-turn effect of persistent fire damage with the same thing, but it uses the assisted DC
-                            // (this doesnt actually implement the feat as-written, as there is no way to achieve DC 5, but an upcoming update will allow for this)
-                            // the upcoming update will add QEffect.ReducesPersistentDamageRecoveryCheckDC. in v3 you can also add an effect with ID CharhideGoblin, but thats temporary.
-                            recieved.EndOfYourTurn = async (QEffect qf, Creature self) =>
-                            {
-                                await self.DealDirectDamage(CombatAction.CreateSimple(self.Battle.Pseudocreature, "Persistent damage"), DiceFormula.FromText(damage), self, CheckResult.Failure, DamageKind.Fire);
-                                if (!self.DeathScheduledForNextStateCheck && (self.Actions.HasDelayedYieldingTo == null || self.HasTrait(Trait.AnimalCompanion)))
-                                {
-                                    qf.RollPersistentDamageRecoveryCheck(assisted: true);
-                                }
-                            };
-                            return recieved;
-                        }
-                        else return recieved;
-                    }
+                    ReducesPersistentDamageRecoveryCheckDc = (QEffect self, QEffect inflicter, DamageKind damagekind) => damagekind == DamageKind.Fire
                 });
                 if (!cr.PersistentUsedUpResources.UsedUpActions.Contains("Crackling Mountain"))
                 {
@@ -231,21 +215,12 @@ public static class TanukiAncestryLoader
                     Innate = true,
                     YouAcquireQEffect = (QEffect self, QEffect recieved) =>
                     {
-                        // Hide the overhead for Fleeing conditions, since the courageous fleeing condition shows its own
-                        if (recieved.Id == QEffectId.Fleeing) recieved.DoNotShowUpOverhead = true;
-                        return recieved;
-                    },
-                    StateCheck = (QEffect self) =>
-                    {
-                        // If the character has fleeing, replace it with courageous fleeing...
-                        QEffect? fleeing = self.Owner.FindQEffect(QEffectId.Fleeing);
-                        if (fleeing != null && fleeing.Source != null)
-                        {
-                            // ... but if the fleeing is tagged by courageous fleeing, then don't.
-                            if (fleeing.Tag?.GetType() == typeof(string) && (string)fleeing.Tag == "Fleeing (Courageously)") return;
-                            self.Owner.AddQEffect(CourageousFleeing(fleeing.Source, fleeing.ExpiresAt));
-                            fleeing.ExpiresAt = ExpirationCondition.Immediately;
-                        }
+                        // replace Fleeing with Courageous Fleeing...
+                        if (recieved.Id != QEffectId.Fleeing) return recieved;
+                        if (recieved.Source == null) return recieved;
+                        // ... unless it's been marked by Courageous Fleeing, then leave it be.
+                        if (recieved.Tag?.GetType() == typeof(string) && (string)recieved.Tag == "Fleeing (Courageously)") return recieved;
+                        return CourageousFleeing(recieved.Source, recieved.ExpiresAt);
                     }
                 });
                 cr.AddQEffect(new QEffect("Tactical Retreat {icon:Reaction}", "Once per encounter, when you recieve the frightened condition, you can choose to Stride immediately with a +10ft circumstance bonus to speed, as if fleeing.")
