@@ -3,7 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.11.35303.130
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dawnsbury.Mod.Ancestries.Tanuki", "Dawnsbury.Mod.Ancestries.Tanuki/Dawnsbury.Mod.Ancestries.Tanuki.csproj", "{F2ED1BAD-90A7-464D-B623-28330B65BC80}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dawnsbury.Mod.Ancestries.Tanuki", "Dawnsbury.Mod.Ancestries.Tanuki\Dawnsbury.Mod.Ancestries.Tanuki.csproj", "{F2ED1BAD-90A7-464D-B623-28330B65BC80}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dawnsbury.Mod.Ancestries.Kitsune", "Dawnsbury.Mod.Ancestries.Kitsune\Dawnsbury.Mod.Ancestries.Kitsune.csproj", "{8F65C54A-545C-4FCB-8D95-AF2E6E42D7A1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{F2ED1BAD-90A7-464D-B623-28330B65BC80}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F2ED1BAD-90A7-464D-B623-28330B65BC80}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F2ED1BAD-90A7-464D-B623-28330B65BC80}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8F65C54A-545C-4FCB-8D95-AF2E6E42D7A1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8F65C54A-545C-4FCB-8D95-AF2E6E42D7A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8F65C54A-545C-4FCB-8D95-AF2E6E42D7A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8F65C54A-545C-4FCB-8D95-AF2E6E42D7A1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
