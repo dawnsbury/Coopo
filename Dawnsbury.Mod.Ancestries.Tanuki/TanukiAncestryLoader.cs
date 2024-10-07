@@ -107,9 +107,8 @@ public static class TanukiAncestryLoader
             [TanukiTrait]
             ).WithOnCreature((Creature cr) =>
             {
-                cr.AddQEffect(new QEffect("Iron Belly", "You have a belly attack.")
+                cr.AddQEffect(new QEffect()
                 {
-                    Innate = true,
                     AdditionalUnarmedStrike = new Item(IllustrationName.Boneshaker, "belly", [Trait.Forceful, Trait.Weapon, Trait.Melee, Trait.Unarmed, Trait.Brawling])
                     .WithWeaponProperties(new WeaponProperties("1d6", DamageKind.Bludgeoning))
                 });
@@ -213,14 +212,14 @@ public static class TanukiAncestryLoader
                 cr.AddQEffect(new QEffect("Courageous Tanuki", "When you are fleeing, you gain a +10-foot speed bonus and you can take 1 action per turn normally.")
                 {
                     Innate = true,
-                    YouAcquireQEffect = (QEffect self, QEffect recieved) =>
+                    YouAcquireQEffect = (QEffect self, QEffect received) =>
                     {
                         // replace Fleeing with Courageous Fleeing...
-                        if (recieved.Id != QEffectId.Fleeing) return recieved;
-                        if (recieved.Source == null) return recieved;
+                        if (received.Id != QEffectId.Fleeing) return received;
+                        if (received.Source == null) return received;
                         // ... unless it's been marked by Courageous Fleeing, then leave it be.
-                        if (recieved.Tag?.GetType() == typeof(string) && (string)recieved.Tag == "Fleeing (Courageously)") return recieved;
-                        return CourageousFleeing(recieved.Source, recieved.ExpiresAt);
+                        if (received.Tag?.GetType() == typeof(string) && (string)received.Tag == "Fleeing (Courageously)") return received;
+                        return CourageousFleeing(received.Source, received.ExpiresAt);
                     }
                 });
                 cr.AddQEffect(new QEffect("Tactical Retreat {icon:Reaction}", "Once per encounter, when you recieve the frightened condition, you can choose to Stride immediately with a +10ft circumstance bonus to speed, as if fleeing.")
@@ -231,7 +230,7 @@ public static class TanukiAncestryLoader
                         if (recieved.Id != QEffectId.Frightened) return;
                         bool takenReaction = await self.Owner.AskToUseReaction("You have gained the frightened condition.\nDo you want to use {b}Tactical Retreat{/b} to Stride with a +10ft speed bonus?");
                         if (!takenReaction) return;
-                        //self.Owner.AddQEffect(QEffect.Fleeing(recieved.Source ?? self.Owner).WithExpirationAtStartOfOwnerTurn());
+                        // maybe remove the name and description from this, might stop it from showing on the character sheet while it's active
                         self.Owner.AddQEffect(new QEffect("Retreating", "+10ft bonus to speed while making a Tactical Retreat.")
                         {
                             BonusToAllSpeeds = (QEffect qe) => new Bonus(2, BonusType.Circumstance, "Retreating")
