@@ -1,11 +1,20 @@
-﻿using Dawnsbury.Core;
+﻿using Dawnsbury.Audio;
+using Dawnsbury.Core;
+using Dawnsbury.Core.CharacterBuilder;
 using Dawnsbury.Core.CharacterBuilder.AbilityScores;
 using Dawnsbury.Core.CharacterBuilder.Feats;
+using Dawnsbury.Core.CharacterBuilder.FeatsDb.Spellbook;
+using Dawnsbury.Core.CharacterBuilder.Selections.Options;
+using Dawnsbury.Core.CharacterBuilder.Spellcasting;
+using Dawnsbury.Core.CombatActions;
 using Dawnsbury.Core.Creatures;
 using Dawnsbury.Core.Mechanics;
+using Dawnsbury.Core.Mechanics.Core;
 using Dawnsbury.Core.Mechanics.Enumerations;
 using Dawnsbury.Core.Mechanics.Treasure;
+using Dawnsbury.Core.Possibilities;
 using Dawnsbury.Modding;
+using Microsoft.Xna.Framework;
 
 namespace Dawnsbury.Mods.Ancestries.Kitsune;
 
@@ -14,6 +23,17 @@ public static class KitsuneAncestryLoader
     static readonly Trait KitsuneTrait = ModManager.RegisterTrait("Kitsune", new TraitProperties("Kitsune", true) { IsAncestryTrait = true });
 
     static FeatName FrozenWindKitsuneFeatName = ModManager.RegisterFeatName("Frozen Wind Kitsune");
+
+    static FeatName KitsuneSpellFamiliarityFeatName = ModManager.RegisterFeatName("Kitsune Spell Familiarity");
+
+    //static ItemName StarOrbItemName = ModManager.RegisterNewItemIntoTheShop("starOrb", (ItemName name) =>
+    //{
+    //    return new Item(name, IllustrationName.Rock, "Star Orb", 1, 0, [Trait.DoNotAddToShop, KitsuneTrait]).WithDescription("{i}This unassuming stone radiates magical power.{/i}\n\nOnce per day, you can activate this star orb in one of two ways:\n\n{b}Activate - Restorative Orb{/b} {icon:Action}; You recover 1d8 hit points times half your level (minimum 1d8)\n\n{b}Activate - Orb Focus{/b} {icon:Action}; You restore 1 focus point to your focus pool, up to your usual maximum.")
+    //    .WithPermanentQEffectWhenWorn((QEffect effect, Item item) =>
+    //    {
+    //        effect.action
+    //    });
+    //});
 
     [DawnsburyDaysModMainMethod]
     public static void LoadMod()
@@ -32,6 +52,8 @@ public static class KitsuneAncestryLoader
             ],
             heritages: GetHeritages().ToList());
 
+        
+
         ModManager.AddFeat(KitsuneAncestry);
 
         AddFeats(GetAncestryFeats());
@@ -47,7 +69,22 @@ public static class KitsuneAncestryLoader
 
     static IEnumerable<Feat> GetAncestryFeats()
     {
-        // this needs to be cleaned up so badly, its disgusting right now
+        Feat FoxfireSubfeat(DamageKind damageKind, SfxName sfx, string damageDescription) =>
+            new Feat(
+                    ModManager.RegisterFeatName("Foxfire" + damageKind.ToString(), damageKind.ToString()),
+                    $"Your tail produces sparks of {damageDescription}.",
+                    $"Your foxfire deals {damageKind.ToString().ToLower()} damage.",
+                    [KitsuneTrait], null).WithPermanentQEffect(null, (QEffect self) =>
+                    {
+                        self.AdditionalUnarmedStrike = new Item(IllustrationName.ElementFire, "foxfire", [Trait.Unarmed, Trait.Ranged, Trait.Weapon, Trait.Magical])
+                            .WithWeaponProperties(
+                                new WeaponProperties("1d4", damageKind)
+                                {
+                                    Sfx = sfx,
+                                    VfxStyle = new VfxStyle(1, Core.Animations.ProjectileKind.Arrow, IllustrationName.FireRay)
+                                }.WithMaximumRange(4).WithRangeIncrement(4));
+                    });
+        // TODO: add a custom blue fire graphic
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Foxfire"),
             level: 1,
@@ -55,46 +92,73 @@ public static class KitsuneAncestryLoader
             "Choose either electricity or fire when you gain this feat. You gain a foxfire ranged unarmed attack with a maximum range of 20 feet. The attack deals 1d4 damage of the chosen type. Your foxfire is in the sling weapon group and has the magical trait. Like other unarmed attacks, you can improve this attack with handwraps of mighty blows.\n\n{b}Special{/b} If you are a frozen wind kitsune, your foxfire deals cold damage instead of electricity or fire.",
             [KitsuneTrait],
             [
-                new Feat(
-                    ModManager.RegisterFeatName("FoxfireFire", "Fire"),
-                    "Your tail produces sparks of flame.",
-                    "Your foxfire deals fire damage.",
-                    [KitsuneTrait], null).WithPermanentQEffect(null, (QEffect self) => {
-                        self.AdditionalUnarmedStrike = new Item(IllustrationName.ElementFire, "foxfire", [Trait.Unarmed, Trait.Ranged, Trait.Weapon, Trait.Magical])
-                            .WithWeaponProperties(
-                                new WeaponProperties("1d4", DamageKind.Fire)
-                                {
-                                    Sfx = Audio.SfxName.FireRay,
-                                    VfxStyle = new VfxStyle(1, Core.Animations.ProjectileKind.Arrow, IllustrationName.FireRay)
-                                }.WithMaximumRange(4).WithRangeIncrement(4));
-                    }).WithPrerequisite((charSheet) => charSheet.Sheet.Heritage?.FeatName != FrozenWindKitsuneFeatName, "Frozen wind kitsune must have a cold foxfire."),
-                    new Feat(
-                    ModManager.RegisterFeatName("FoxfireElectric", "Electric"),
-                    "Your tail produces sparks of electricity.",
-                    "Your foxfire deals electricity damage.",
-                    [KitsuneTrait], null).WithPermanentQEffect(null, (QEffect self) => {
-                        self.AdditionalUnarmedStrike = new Item(IllustrationName.ElementFire, "foxfire", [Trait.Unarmed, Trait.Ranged, Trait.Weapon, Trait.Magical])
-                            .WithWeaponProperties(
-                                new WeaponProperties("1d4", DamageKind.Electricity)
-                                {
-                                    Sfx = Audio.SfxName.ShockingGrasp,
-                                    VfxStyle = new VfxStyle(1, Core.Animations.ProjectileKind.Arrow, IllustrationName.FireRay)
-                                }.WithMaximumRange(4).WithRangeIncrement(4));
-                    }).WithPrerequisite((charSheet) => charSheet.Sheet.Heritage?.FeatName != FrozenWindKitsuneFeatName, "Frozen wind kitsune must have a cold foxfire."),
-                    new Feat(
-                    ModManager.RegisterFeatName("FoxfireCold", "Cold"),
-                    "Your tail produces sparks of cold.",
-                    "Your foxfire deals cold damage.",
-                    [KitsuneTrait], null).WithPermanentQEffect(null, (QEffect self) => {
-                        self.AdditionalUnarmedStrike = new Item(IllustrationName.ElementFire, "foxfire", [Trait.Unarmed, Trait.Ranged, Trait.Weapon, Trait.Magical])
-                            .WithWeaponProperties(
-                                new WeaponProperties("1d4", DamageKind.Cold)
-                                {
-                                    Sfx = Audio.SfxName.RayOfFrost,
-                                    VfxStyle = new VfxStyle(1, Core.Animations.ProjectileKind.Arrow, IllustrationName.FireRay)
-                                }.WithMaximumRange(4).WithRangeIncrement(4));
-                    }).WithPrerequisite((charSheet) => charSheet.Sheet.Heritage?.FeatName == FrozenWindKitsuneFeatName, "Only frozen wind kitsune can have a cold foxfire.")
+                FoxfireSubfeat(DamageKind.Fire, SfxName.FireRay, "flame")
+                    .WithPrerequisite((charSheet) => charSheet.Sheet.Heritage?.FeatName != FrozenWindKitsuneFeatName, "Frozen wind kitsune must have a cold foxfire."),
+                FoxfireSubfeat(DamageKind.Electricity, Audio.SfxName.ShockingGrasp, "electricity")
+                    .WithPrerequisite((charSheet) => charSheet.Sheet.Heritage?.FeatName != FrozenWindKitsuneFeatName, "Frozen wind kitsune must have a cold foxfire."),
+                FoxfireSubfeat(DamageKind.Cold, Audio.SfxName.RayOfFrost, "frost")
+                    .WithPrerequisite((charSheet) => charSheet.Sheet.Heritage?.FeatName == FrozenWindKitsuneFeatName, "Only frozen wind kitsune can have a cold foxfire.")
                 ]);
+        yield return new TrueFeat(
+            ModManager.RegisterFeatName("Retractable Claws"),
+            level: 1,
+            null,
+            "You gain a claw unarmed attack that deals 1d4 slashing damage. Your claws are in the brawling group and have the agile, finesse, and unarmed traits.",
+            [KitsuneTrait]).WithPermanentQEffect(null, (QEffect self) =>
+            {
+                self.AdditionalUnarmedStrike = new Item(IllustrationName.DragonClaws, "claw", [Trait.Weapon, Trait.Melee, Trait.Brawling, Trait.Agile, Trait.Finesse, Trait.Unarmed])
+                    .WithWeaponProperties(new WeaponProperties("1d4", DamageKind.Slashing));
+            });
+
+        Feat SpellFamiliaritySubfeat(string featName, SpellId spellId)
+        {
+            Spell spell = AllSpells.CreateModernSpellTemplate(spellId, KitsuneTrait);
+            return new Feat(
+                ModManager.RegisterFeatName(featName, spell.Name),
+                null,
+                $"You can cast {AllSpells.CreateSpellLink(spellId, KitsuneTrait)} as a divine innate spell at will. Your spellcasting ability for this cantrip is Charisma.",
+                [KitsuneTrait],
+                null).WithIllustration(spell.Illustration).WithRulesBlockForSpell(spellId).WithOnCreature(delegate (Creature cr)
+                {
+                    cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, KitsuneTrait, Ability.Charisma, Trait.Divine).WithSpells([spellId], 0);
+                });
+        }
+        yield return new TrueFeat(
+            KitsuneSpellFamiliarityFeatName,
+            level: 1,
+            "You’ve picked up a few magical tricks.",
+            $"Choose {AllSpells.CreateSpellLink(SpellId.Daze, KitsuneTrait)} or {AllSpells.CreateSpellLink(SpellId.ForbiddingWard, KitsuneTrait)}. You can cast this cantrip as a divine innate spell at will. Your spellcasting ability for this cantrip is Charisma.",
+            [KitsuneTrait],
+            [
+                SpellFamiliaritySubfeat("KitsuneSpellFamiliarityDaze", SpellId.Daze),
+                SpellFamiliaritySubfeat("KitsuneSpellFamiliarityForbiddingWard", SpellId.ForbiddingWard)
+                ]
+            ).WithOnSheet((sheet) =>
+            {
+                sheet.Proficiencies.Set(Trait.Spell, Proficiency.Trained);
+            });
+        yield return new TrueFeat(
+            ModManager.RegisterFeatName("Star Orb"),
+            level: 1,
+            "Your magic has crystallized into a spherical stone.",
+            "You gain a Star Orb, a magical item that resembles a mundane stone. Once per day, you can activate the item in one of two ways:\n\n{b}Activate - Restorative Orb{/b} {icon:Action}; You recover 1d8 hit points times half your level (minimum 1d8)\n\n{b}Activate - Orb Focus{/b} {icon:Action}; You restore 1 focus point to your focus pool, up to your usual maximum.",
+            [KitsuneTrait]
+            ).WithOnSheet((CalculatedCharacterSheetValues sheet) =>
+            {
+                //if (sheet.Sheet.Inventory.Backpack.Where(item => item?.ItemName == StarOrbItemName).Any()) return;
+                //else sheet.Sheet.Inventory.AddAtEndOfBackpack(Items.CreateNew(StarOrbItemName));
+            }).WithOnCreature((Creature cr) =>
+            {
+                cr.AddQEffect(new QEffect()
+                {
+                    ProvideActionIntoPossibilitySection = (QEffect self, PossibilitySection section) =>
+                    {
+                        if (!(section.PossibilitySectionId == PossibilitySectionId.ItemActions)) return null;
+                        else return new ActionPossibility(CombatAction.CreateSimple(self.Owner, "Star Orb"));
+                        // wanna continue from here and use SubmenuPossibility to expand a menu. then you can have two options in there
+                    }
+                });
+            });
     }
 
     static IEnumerable<Feat> GetHeritages()
@@ -118,6 +182,63 @@ public static class KitsuneAncestryLoader
             ).WithOnCreature(delegate (Creature cr)
             {
                 cr.AddQEffect(QEffect.DamageResistance(DamageKind.Cold, cr.MaximumSpellRank));
+            });
+        yield return new HeritageSelectionFeat(
+            ModManager.RegisterFeatName("Celestial Envoy Kitsune"),
+            "Whether due to a deity's grace or faithful forebears, you have a strong connection to the divine, affording you certain protections.",
+            "You gain the Invoke Celestial Privilege reaction.\n\n{b}Invoke Celestial Privilege{/b} {icon:Reaction}\n{b}Trigger{/b} You attempt a saving throw against a divine effect.\nYou rise above the triggering effect, refusing to be harmed by it. You gain a +1 circumstance bonus to the triggering saving throw and to any other saving throws you attempt against divine effects until the start of your next turn."
+            ).WithOnCreature(delegate (Creature cr)
+            {
+                cr.AddQEffect(new QEffect("Invoke Celestial Privilege {icon:Reaction}", "Gain a +1 bonus to saving throws against divine effects until the start of your next turn.")
+                {
+                    BeforeYourSavingThrow = async (QEffect self, CombatAction action, Creature you) =>
+                    {
+                        if (!action.HasTrait(Trait.Divine)) return;
+                        bool takeReaction = await you.AskToUseReaction("You are about to make a saving throw against a divine effect.\nDo you want to use {b}Invoke Celestial Privilege{/b} to gain a +1 circumstance bonus on all such saves until the start of your next turn?");
+                        if (!takeReaction) return;
+                        you.Occupies.Overhead("Celestial Privilege", Color.Gold, $"{you.Name} invokes their Celestial Privilege against {action.Name}, gaining a +1 bonus against divine effects.");
+                        cr.AddQEffect(new QEffect("Celestial Privilege", "You have a +1 circumstance bonus to saving throws against divine effects until the start of your next turn.")
+                        {
+                            BonusToDefenses = (QEffect self, CombatAction? action, Defense defense) => action?.HasTrait(Trait.Divine) == true ? new Bonus(1, BonusType.Circumstance, "Celestial Privilege") : null,
+                            ExpiresAt = ExpirationCondition.ExpiresAtStartOfYourTurn,
+                            Illustration = IllustrationName.Bless
+                        });
+                    }
+                });
+            });
+        yield return new HeritageSelectionFeat(
+            ModManager.RegisterFeatName("Dark Fields Kitsune"),
+            "You can exert your unsettling presence to subtly Demoralize others.",
+            "You gain the Intimidating Glare general feat, which removes the -4 penalty when attempting to Demoralize a creature that doesn't understand your language. You also gain the Invigorating Fear reaction.\n\n{b}Invigorating Fear{/b} {icon:Reaction}\n{b}Frequency{/b} Once per encounter\n{b}Trigger{/b} A creature within 60 feet gains the frightened condition.\nYou are invigorated by the shock of a prank or the thrum of terror. You gain temporary Hit Points equal to the creature’s level or 3, whichever is higher. You lose any temporary Hit Points after 1 minute."
+            ).WithOnSheet(delegate (CalculatedCharacterSheetValues sheet)
+            {
+                sheet.GrantFeat(FeatName.IntimidatingGlare);
+            }).WithOnCreature(delegate (Creature cr)
+            {
+                QEffect kitsuneEffect = new QEffect("Invigorating Fear {icon:Reaction}", "Gain temporary Hit Points in response to a nearby creature becoming frightened.");
+                kitsuneEffect.AddGrantingOfTechnical((cr) => true, (QEffect otherEffect) =>
+                {
+                    otherEffect.AfterYouAcquireEffect = async (QEffect otherEffect, QEffect received) =>
+                    {
+                        Creature kitsune = kitsuneEffect.Owner;
+                        Creature other = otherEffect.Owner;
+                        if (received.Id != QEffectId.Frightened) return;
+                        int tempHP = Math.Max(otherEffect.Owner.Level, 3);
+                        if (!await kitsune.AskToUseReaction($"A nearby creature ({other.Name}) has become frightened.\nUse Invigorating Fear to gain {tempHP} temporary Hit Points?")) return;
+                        kitsune.GainTemporaryHP(tempHP);
+                        kitsuneEffect.ExpiresAt = ExpirationCondition.Immediately;
+                    };
+                });
+
+                cr.AddQEffect(kitsuneEffect);
+            });
+        yield return new HeritageSelectionFeat(
+            ModManager.RegisterFeatName("Empty Sky Kitsune"),
+            "Your spirit is open to the secrets of beyond, granting you greater access to kitsune magic.",
+            "You gain the {b}Kitsune Spell Familiarity{/b} ancestry feat."
+            ).WithOnSheet((CalculatedCharacterSheetValues sheet) =>
+            {
+                sheet.AddSelectionOptionRightNow(new SingleFeatSelectionOption("emptySkySpellSelection", "Heritage Spell Choice", 1, (Feat feat) => feat.FeatName == KitsuneSpellFamiliarityFeatName));
             });
     }
 }
