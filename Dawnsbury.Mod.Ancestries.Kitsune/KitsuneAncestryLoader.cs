@@ -13,27 +13,21 @@ using Dawnsbury.Core.Mechanics.Core;
 using Dawnsbury.Core.Mechanics.Enumerations;
 using Dawnsbury.Core.Mechanics.Treasure;
 using Dawnsbury.Core.Possibilities;
+using Dawnsbury.Display.Text;
 using Dawnsbury.Modding;
 using Microsoft.Xna.Framework;
+using System.Diagnostics;
 
 namespace Dawnsbury.Mods.Ancestries.Kitsune;
 
 public static class KitsuneAncestryLoader
 {
-    static readonly Trait KitsuneTrait = ModManager.RegisterTrait("Kitsune", new TraitProperties("Kitsune", true) { IsAncestryTrait = true });
+    static readonly public Trait KitsuneTrait = ModManager.RegisterTrait("Kitsune", new TraitProperties("Kitsune", true) { IsAncestryTrait = true });
 
     static FeatName FrozenWindKitsuneFeatName = ModManager.RegisterFeatName("Frozen Wind Kitsune");
 
     static FeatName KitsuneSpellFamiliarityFeatName = ModManager.RegisterFeatName("Kitsune Spell Familiarity");
 
-    //static ItemName StarOrbItemName = ModManager.RegisterNewItemIntoTheShop("starOrb", (ItemName name) =>
-    //{
-    //    return new Item(name, IllustrationName.Rock, "Star Orb", 1, 0, [Trait.DoNotAddToShop, KitsuneTrait]).WithDescription("{i}This unassuming stone radiates magical power.{/i}\n\nOnce per day, you can activate this star orb in one of two ways:\n\n{b}Activate - Restorative Orb{/b} {icon:Action}; You recover 1d8 hit points times half your level (minimum 1d8)\n\n{b}Activate - Orb Focus{/b} {icon:Action}; You restore 1 focus point to your focus pool, up to your usual maximum.")
-    //    .WithPermanentQEffectWhenWorn((QEffect effect, Item item) =>
-    //    {
-    //        effect.action
-    //    });
-    //});
 
     [DawnsburyDaysModMainMethod]
     public static void LoadMod()
@@ -76,11 +70,13 @@ public static class KitsuneAncestryLoader
                     $"Your foxfire deals {damageKind.ToString().ToLower()} damage.",
                     [KitsuneTrait], null).WithPermanentQEffect(null, (QEffect self) =>
                     {
+                        // todo: change this to blue fire art
                         self.AdditionalUnarmedStrike = new Item(IllustrationName.ElementFire, "foxfire", [Trait.Unarmed, Trait.Ranged, Trait.Weapon, Trait.Magical])
                             .WithWeaponProperties(
                                 new WeaponProperties("1d4", damageKind)
                                 {
                                     Sfx = sfx,
+                                    // todo: change this to blue fire art
                                     VfxStyle = new VfxStyle(1, Core.Animations.ProjectileKind.Arrow, IllustrationName.FireRay)
                                 }.WithMaximumRange(4).WithRangeIncrement(4));
                     });
@@ -126,7 +122,7 @@ public static class KitsuneAncestryLoader
         yield return new TrueFeat(
             KitsuneSpellFamiliarityFeatName,
             level: 1,
-            "You’ve picked up a few magical tricks.",
+            "You've picked up a few magical tricks.",
             $"Choose {AllSpells.CreateSpellLink(SpellId.Daze, KitsuneTrait)} or {AllSpells.CreateSpellLink(SpellId.ForbiddingWard, KitsuneTrait)}. You can cast this cantrip as a divine innate spell at will. Your spellcasting ability for this cantrip is Charisma.",
             [KitsuneTrait],
             [
@@ -141,21 +137,44 @@ public static class KitsuneAncestryLoader
             ModManager.RegisterFeatName("Star Orb"),
             level: 1,
             "Your magic has crystallized into a spherical stone.",
-            "You gain a Star Orb, a magical item that resembles a mundane stone. Once per day, you can activate the item in one of two ways:\n\n{b}Activate - Restorative Orb{/b} {icon:Action}; You recover 1d8 hit points times half your level (minimum 1d8)\n\n{b}Activate - Orb Focus{/b} {icon:Action}; You restore 1 focus point to your focus pool, up to your usual maximum.",
+            "You gain a Star Orb, a magical item that resembles a mundane stone. Once per day, you can activate the item in one of two ways:\n\n{b}Activate - Orb Restoration{/b} {icon:Action}; You recover 1d8 hit points times half your level (minimum 1d8)\n\n{b}Activate - Orb Focus{/b} {icon:Action}; You restore 1 focus point to your focus pool, up to your usual maximum.",
             [KitsuneTrait]
-            ).WithOnSheet((CalculatedCharacterSheetValues sheet) =>
+            )/*.WithOnCreature((CalculatedCharacterSheetValues sheet, Creature cr) =>
             {
-                //if (sheet.Sheet.Inventory.Backpack.Where(item => item?.ItemName == StarOrbItemName).Any()) return;
-                //else sheet.Sheet.Inventory.AddAtEndOfBackpack(Items.CreateNew(StarOrbItemName));
-            }).WithOnCreature((Creature cr) =>
-            {
-                cr.AddQEffect(new QEffect()
+                if (sheet.Sheet.Inventory.Backpack.Where(item => item?.ItemName == StarOrb.StarOrbItemName).Any()) return;
+                if (sheet.Sheet.Inventory.LeftHand?.ItemName == StarOrb.StarOrbItemName) return;
+                if (sheet.Sheet.Inventory.RightHand?.ItemName == StarOrb.StarOrbItemName) return;
+                Item toAdd = Items.CreateNew(StarOrb.StarOrbItemName);
+                sheet.Sheet.Inventory.AddAtEndOfBackpack(toAdd);
+                cr.AddQEffect(new QEffect() // rock tracker, stops the unworthy from possessing the stone
                 {
+                    StateCheck = (QEffect self) =>
+                    {
+                        
+                    }
+                });
+            });*/
+            .WithOnCreature((CalculatedCharacterSheetValues sheet, Creature cr) =>
+            {
+                //TODO: figure out if this is actually working as once-per-day, and ask on the server if it isnt
+                if (cr.PersistentUsedUpResources.UsedUpActions.Contains("StarOrb")) return;
+                else cr.AddQEffect(new QEffect("Star Orb", $"Once per day, drain your star orb to regain {S.HeightenedVariable(cr.MaximumSpellRank, 1)}d8 HP or recover 1 focus point.")
+                {
+                    Id = StarOrb.StarOrbQEffectId,
                     ProvideActionIntoPossibilitySection = (QEffect self, PossibilitySection section) =>
                     {
                         if (!(section.PossibilitySectionId == PossibilitySectionId.ItemActions)) return null;
-                        else return new ActionPossibility(CombatAction.CreateSimple(self.Owner, "Star Orb"));
-                        // wanna continue from here and use SubmenuPossibility to expand a menu. then you can have two options in there
+                        else return new SubmenuPossibility(IllustrationName.Rock, "Star Orb")
+                        {
+                            Subsections = [
+                                new PossibilitySection("Star Orb") {
+                                    Possibilities = [
+                                        new ActionPossibility(StarOrb.OrbRestoration(self.Owner)),
+                                        new ActionPossibility(StarOrb.OrbFocus(self.Owner, sheet.FocusPointCount))
+                                        ]
+                                }
+                                ]
+                        };
                     }
                 });
             });
@@ -201,7 +220,7 @@ public static class KitsuneAncestryLoader
                         {
                             BonusToDefenses = (QEffect self, CombatAction? action, Defense defense) => action?.HasTrait(Trait.Divine) == true ? new Bonus(1, BonusType.Circumstance, "Celestial Privilege") : null,
                             ExpiresAt = ExpirationCondition.ExpiresAtStartOfYourTurn,
-                            Illustration = IllustrationName.Bless
+                            Illustration = IllustrationName.Sanctuary
                         });
                     }
                 });
@@ -209,7 +228,7 @@ public static class KitsuneAncestryLoader
         yield return new HeritageSelectionFeat(
             ModManager.RegisterFeatName("Dark Fields Kitsune"),
             "You can exert your unsettling presence to subtly Demoralize others.",
-            "You gain the Intimidating Glare general feat, which removes the -4 penalty when attempting to Demoralize a creature that doesn't understand your language. You also gain the Invigorating Fear reaction.\n\n{b}Invigorating Fear{/b} {icon:Reaction}\n{b}Frequency{/b} Once per encounter\n{b}Trigger{/b} A creature within 60 feet gains the frightened condition.\nYou are invigorated by the shock of a prank or the thrum of terror. You gain temporary Hit Points equal to the creature’s level or 3, whichever is higher. You lose any temporary Hit Points after 1 minute."
+            "You gain the Intimidating Glare general feat, which removes the -4 penalty when attempting to Demoralize a creature that doesn't understand your language. You also gain the Invigorating Fear reaction.\n\n{b}Invigorating Fear{/b} {icon:Reaction}\n{b}Frequency{/b} Once per encounter\n{b}Trigger{/b} A creature within 60 feet gains the frightened condition.\nYou are invigorated by the shock of a prank or the thrum of terror. You gain temporary Hit Points equal to the creature's level or 3, whichever is higher. You lose any temporary Hit Points after 1 minute."
             ).WithOnSheet(delegate (CalculatedCharacterSheetValues sheet)
             {
                 sheet.GrantFeat(FeatName.IntimidatingGlare);

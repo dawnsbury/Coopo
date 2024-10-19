@@ -109,7 +109,7 @@ public static class TanukiAncestryLoader
             {
                 cr.AddQEffect(new QEffect()
                 {
-                    AdditionalUnarmedStrike = new Item(IllustrationName.Boneshaker, "belly", [Trait.Forceful, Trait.Weapon, Trait.Melee, Trait.Unarmed, Trait.Brawling])
+                    AdditionalUnarmedStrike = new Item(IllustrationName.ShakeItOff, "belly", [Trait.Forceful, Trait.Weapon, Trait.Melee, Trait.Unarmed, Trait.Brawling])
                     .WithWeaponProperties(new WeaponProperties("1d6", DamageKind.Bludgeoning))
                 });
             });
