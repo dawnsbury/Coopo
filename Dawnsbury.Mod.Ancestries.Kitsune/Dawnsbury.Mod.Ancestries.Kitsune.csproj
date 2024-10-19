@@ -29,8 +29,15 @@
       <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Dawnsbury Days\Data\MonoGame.Framework.dll</HintPath>
     </Reference>
   </ItemGroup>
+
+  <ItemGroup>
+    <None Update="KitsuneAssets\blueflame.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 	<Target Name="CopyToGameModsFolder" AfterTargets="Build">
 		<Copy SourceFiles="$(TargetPath)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Dawnsbury Days\CustomMods" />
+		<Copy SourceFiles="$(TargetDir)KitsuneAssets\blueflame.png" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Dawnsbury Days\CustomMods\KitsuneAssets" />
 		<Message text="Copied to game mod folder." />
 	</Target>
 </Project>

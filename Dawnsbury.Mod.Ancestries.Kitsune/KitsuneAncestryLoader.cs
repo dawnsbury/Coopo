@@ -13,6 +13,7 @@ using Dawnsbury.Core.Mechanics.Core;
 using Dawnsbury.Core.Mechanics.Enumerations;
 using Dawnsbury.Core.Mechanics.Treasure;
 using Dawnsbury.Core.Possibilities;
+using Dawnsbury.Display.Illustrations;
 using Dawnsbury.Display.Text;
 using Dawnsbury.Modding;
 using Microsoft.Xna.Framework;
@@ -28,6 +29,7 @@ public static class KitsuneAncestryLoader
 
     static FeatName KitsuneSpellFamiliarityFeatName = ModManager.RegisterFeatName("Kitsune Spell Familiarity");
 
+    static Illustration BlueFlameArt = new ModdedIllustration("KitsuneAssets/blueflame.png");
 
     [DawnsburyDaysModMainMethod]
     public static void LoadMod()
@@ -70,14 +72,12 @@ public static class KitsuneAncestryLoader
                     $"Your foxfire deals {damageKind.ToString().ToLower()} damage.",
                     [KitsuneTrait], null).WithPermanentQEffect(null, (QEffect self) =>
                     {
-                        // todo: change this to blue fire art
-                        self.AdditionalUnarmedStrike = new Item(IllustrationName.ElementFire, "foxfire", [Trait.Unarmed, Trait.Ranged, Trait.Weapon, Trait.Magical])
+                        self.AdditionalUnarmedStrike = new Item(BlueFlameArt, "foxfire", [Trait.Unarmed, Trait.Ranged, Trait.Weapon, Trait.Magical])
                             .WithWeaponProperties(
                                 new WeaponProperties("1d4", damageKind)
                                 {
                                     Sfx = sfx,
-                                    // todo: change this to blue fire art
-                                    VfxStyle = new VfxStyle(1, Core.Animations.ProjectileKind.Arrow, IllustrationName.FireRay)
+                                    VfxStyle = new VfxStyle(1, Core.Animations.ProjectileKind.Arrow, BlueFlameArt)
                                 }.WithMaximumRange(4).WithRangeIncrement(4));
                     });
         // TODO: add a custom blue fire graphic
