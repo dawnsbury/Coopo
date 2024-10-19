@@ -26,7 +26,7 @@ namespace Dawnsbury.Mods.Ancestries.Kitsune
         static public CombatAction OrbRestoration(Creature owner)
         {
             return new CombatAction(owner, IllustrationName.Heal, "Orb Restoration",
-                [KitsuneAncestryLoader.KitsuneTrait],
+                [KitsuneAncestryLoader.KitsuneTrait, Trait.Concentrate],
                 $"Recover {S.HeightenedVariable(owner.MaximumSpellRank, 1)}d8 hit points.",
                 Target.Self()).WithEffectOnSelf(async (CombatAction self, Creature cr) =>
                 {
@@ -41,7 +41,7 @@ namespace Dawnsbury.Mods.Ancestries.Kitsune
         static public CombatAction OrbFocus(Creature owner, int focusPointMax)
         {
             var action = new CombatAction(owner, IllustrationName.Blur, "Orb Focus",
-                [KitsuneAncestryLoader.KitsuneTrait],
+                [KitsuneAncestryLoader.KitsuneTrait, Trait.Concentrate],
                 $"Recover 1 focus point.",
                 Target.Self().WithAdditionalRestriction((Creature cr) =>
                 {
