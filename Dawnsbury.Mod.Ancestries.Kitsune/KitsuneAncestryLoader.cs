@@ -80,7 +80,6 @@ public static class KitsuneAncestryLoader
                                     VfxStyle = new VfxStyle(1, Core.Animations.ProjectileKind.Arrow, BlueFlameArt)
                                 }.WithMaximumRange(4).WithRangeIncrement(4));
                     });
-        // TODO: add a custom blue fire graphic
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Foxfire"),
             level: 1,
@@ -156,7 +155,6 @@ public static class KitsuneAncestryLoader
             });*/
             .WithOnCreature((CalculatedCharacterSheetValues sheet, Creature cr) =>
             {
-                //TODO: figure out if this is actually working as once-per-day, and ask on the server if it isnt
                 if (cr.PersistentUsedUpResources.UsedUpActions.Contains("StarOrb")) return;
                 else cr.AddQEffect(new QEffect("Star Orb", $"Once per day, drain your star orb to regain {S.HeightenedVariable(cr.MaximumSpellRank, 1)}d8 HP or recover 1 focus point.")
                 {

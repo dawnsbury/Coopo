@@ -9,15 +9,11 @@ using Dawnsbury.Core.Mechanics.Core;
 using Dawnsbury.Core.Mechanics.Treasure;
 using Dawnsbury.Core;
 using Microsoft.Xna.Framework;
-using Dawnsbury.Core.Roller;
 using System.Diagnostics;
-using Dawnsbury.Core.CharacterBuilder.Spellcasting;
-using Dawnsbury.Core.CharacterBuilder.FeatsDb.Spellbook;
-using Dawnsbury.Core.Mechanics.Targeting;
-using Dawnsbury.Audio;
-using Dawnsbury.Display.Text;
 
 namespace Dawnsbury.Mods.Ancestries.Tanuki;
+
+// IDEA: Homebrew a level 1 version of "hasty celebration", maybe called "premature celebration", and then think up a heritage
 
 public static class TanukiAncestryLoader
 {
@@ -27,48 +23,6 @@ public static class TanukiAncestryLoader
     public static void LoadMod()
     {
         //Debugger.Launch();
-
-        //ModManager.RegisterNewSpell("Friendfear", 1, (SpellId spellId, Creature? caster, int spellLevel, bool inCombat, SpellInformation spellInfo) =>
-        //{
-        //    return Spells.CreateModern(IllustrationName.Fear, "Friendfear", new Trait[8]
-        //    {
-        //    Trait.Emotion,
-        //    Trait.Enchantment,
-        //    Trait.Fear,
-        //    Trait.Mental,
-        //    Trait.Arcane,
-        //    Trait.Divine,
-        //    Trait.Occult,
-        //    Trait.Primal
-        //    }, "You plant fear in the target (including your friends).", "The target makes a Will save." + S.FourDegreesOfSuccess("The target is unaffected.", "The target is frightened 1.", "The target is frightened 2.", "The target is frightened 3 and fleeing for 1 round."),
-        //    Target.RangedFriend(6), spellLevel, SpellSavingThrow.Standard(Defense.Will))
-        //    .WithSoundEffect(SfxName.Fear)
-        //        .WithEffectOnEachTarget(async delegate (CombatAction spell, Creature caster, Creature target, CheckResult checkResult)
-        //        {
-        //            int num2;
-        //            switch (checkResult)
-        //            {
-        //                case CheckResult.CriticalSuccess:
-        //                    return;
-        //                case CheckResult.Success:
-        //                    num2 = 1;
-        //                    break;
-        //                case CheckResult.Failure:
-        //                    num2 = 2;
-        //                    break;
-        //                case CheckResult.CriticalFailure:
-        //                    num2 = 3;
-        //                    break;
-        //                default:
-        //                    num2 = 0;
-        //                    break;
-        //            }
-
-        //            int value = num2;
-        //            target.AddQEffect(QEffect.Frightened(value));
-        //            target.AddQEffect(QEffect.Fleeing(caster).WithExpirationAtStartOfSourcesTurn(caster, 1));
-        //        });
-        //});
 
         Feat TanukiAncestry = new AncestrySelectionFeat(
             ModManager.RegisterFeatName("Tanuki"),
@@ -125,7 +79,7 @@ public static class TanukiAncestryLoader
                 cr.AddQEffect(new QEffect("Scorched Tanuki", "Your flat check to remove persistent fire damage is DC 10 (DC 5 with assistance).")
                 {
                     Innate = true,
-                    ReducesPersistentDamageRecoveryCheckDc = (QEffect self, QEffect inflicter, DamageKind damagekind) => damagekind == DamageKind.Fire
+                    ReducesPersistentDamageRecoveryCheckDc = (QEffect self, QEffect inflictor, DamageKind damageKind) => damageKind == DamageKind.Fire
                 });
                 if (!cr.PersistentUsedUpResources.UsedUpActions.Contains("Crackling Mountain"))
                 {
@@ -150,6 +104,26 @@ public static class TanukiAncestryLoader
                     });
                 }
             });
+
+        //yield return new TrueFeat(
+        //    ModManager.RegisterFeatName("Hasty Celebration {icon:reaction}"),
+        //    5,
+        //    "After even the briefest success, you get caught up in the moment and begin to party, cheering your allies on.",
+        //    "{b}Frequency{/b}Once per encounter\n{b}Trigger{/b}You critically succeed at an attack roll against an enemy, or an enemy critically fails their saving throw against one of your effects.\nYou grant all allies within 60 feet a +2 circumstance bonus to attack rolls and damage until the end of your next turn. Unfortunately, while you sing and dance, you aren't keeping an eye on your surroundings like you should, making you flat-footed to all enemies until the end of your next turn as well.",
+        //    [TanukiTrait]
+        //    ).WithOnCreature(delegate (Creature cr)
+        //    {
+        //        if (!cr.PersistentUsedUpResources.UsedUpActions.Contains("Crackling Mountain"))
+        //        {
+        //            cr.AddQEffect(new QEffect("Hasty Celebration {icon:reaction}", "When your attack or effect crits, give your allies a +2 circumstance bonus to attack rolls and damage until the end of your next turn. However, you become flat-footed for this duration as well.")
+        //            {
+        //                Innate = true,
+        //                // continue here, probably gotta use AddGrantingOfTechnical to give every enemy an effect that watches for crits from you. 
+        //                // maybe you could use AfterYouMakeAttackRoll right here for the attack roll part? but for the saving throw part, thats all on the recipient as far as i can tell
+
+        //            });
+        //        }
+        //    });
     }
 
     static IEnumerable<Feat> GetHeritages()
@@ -186,18 +160,18 @@ public static class TanukiAncestryLoader
                 cr.AddQEffect(QEffect.DamageResistance(DamageKind.Poison, cr.MaximumSpellRank));
                 cr.AddQEffect(new QEffect("Virtuous Tanuki", "You can eat and drink when sickened.")
                 {
-                    YouAcquireQEffect = (QEffect effect, QEffect recieved) =>
+                    YouAcquireQEffect = (QEffect effect, QEffect received) =>
                     {
-                        if (recieved.Id == QEffectId.Sickened)
+                        if (received.Id == QEffectId.Sickened)
                         {
-                            recieved.PreventTakingAction = null; // remove the function preventing the player from using potions
-                            recieved.Name = "Sickened (Virtuous)";
-                            recieved.Description = "You take a status penalty equal to the value to all your checks and DCs. You can still eat and drink due to your virtuous heritage.";
-                            return recieved;
+                            received.PreventTakingAction = null; // remove the function preventing the player from using potions
+                            received.Name = "Sickened (Virtuous)";
+                            received.Description = "You take a status penalty equal to the value to all your checks and DCs. You can still eat and drink due to your virtuous heritage.";
+                            return received;
                         }
                         else
                         {
-                            return recieved;
+                            return received;
                         }
                     }
                 });
@@ -222,12 +196,12 @@ public static class TanukiAncestryLoader
                         return CourageousFleeing(received.Source, received.ExpiresAt);
                     }
                 });
-                cr.AddQEffect(new QEffect("Tactical Retreat {icon:Reaction}", "Once per encounter, when you recieve the frightened condition, you can choose to Stride immediately with a +10ft circumstance bonus to speed, as if fleeing.")
+                cr.AddQEffect(new QEffect("Tactical Retreat {icon:Reaction}", "Once per encounter, when you receive the frightened condition, you can choose to Stride immediately with a +10ft circumstance bonus to speed, as if fleeing.")
                 {
                     Innate = true,
-                    AfterYouAcquireEffect = async (QEffect self, QEffect recieved) =>
+                    AfterYouAcquireEffect = async (QEffect self, QEffect received) =>
                     {
-                        if (recieved.Id != QEffectId.Frightened) return;
+                        if (received.Id != QEffectId.Frightened) return;
                         bool takenReaction = await self.Owner.AskToUseReaction("You have gained the frightened condition.\nDo you want to use {b}Tactical Retreat{/b} to Stride with a +10ft speed bonus?");
                         if (!takenReaction) return;
                         // maybe remove the name and description from this, might stop it from showing on the character sheet while it's active
