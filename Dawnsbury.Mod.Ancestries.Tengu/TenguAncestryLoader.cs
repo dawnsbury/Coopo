@@ -15,6 +15,8 @@ using Dawnsbury.Core.Tiles;
 using Dawnsbury.Display.Illustrations;
 using Dawnsbury.Core.CharacterBuilder.Spellcasting;
 using Dawnsbury.Core.CharacterBuilder.FeatsDb.Spellbook;
+using Dawnsbury.Display.Text;
+using Dawnsbury.Core.Mechanics.Core;
 
 namespace Dawnsbury.Mods.Ancestries.Tengu;
 
@@ -23,12 +25,12 @@ public static class TenguAncestryLoader
 {
     static readonly Trait TenguTrait = ModManager.RegisterTrait("Tengu", new TraitProperties("Tengu", true) { IsAncestryTrait = true });
 
-    static readonly Illustration TalonArt = new ModdedIllustration("TenguAssets/talons.png");
+    static readonly Trait TenguWeaponTrait = ModManager.RegisterTrait("Tengu Weapon", new TraitProperties("Tengu Weapon", false) { ProficiencyName = "Tengu weapons" });
 
     [DawnsburyDaysModMainMethod]
     public static void LoadMod()
     {
-        //Debugger.Launch();
+        Debugger.Launch();
 
         Feat TenguAncestry = new AncestrySelectionFeat(
             ModManager.RegisterFeatName("Tengu"),
@@ -53,6 +55,8 @@ public static class TenguAncestryLoader
         ModManager.AddFeat(TenguAncestry);
 
         AddFeats(GetAncestryFeats());
+
+        Items.RegisterItems();
     }
 
     static void AddFeats(IEnumerable<Feat> feats)
@@ -65,28 +69,26 @@ public static class TenguAncestryLoader
 
     static IEnumerable<Feat> GetAncestryFeats()
     {
-        // TODO: Implement feat
+        Spell produceFlame = AllSpells.CreateModernSpellTemplate(SpellId.ProduceFlame, TenguTrait);
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Mariner's Fire"),
             1,
             "You conjure uncanny orbs of spiritual flame that float above or below the water's surface.",
-            $"You can cast the {AllSpells.CreateSpellLink(SpellId.ProduceFlame, TenguTrait)} cantrip as a primal innate spell at will. You can cast this cantrip underwater.",
+            $"You can cast the {produceFlame.ToSpellLink()} cantrip as a primal innate spell at will. Your spellcasting ability for this spell is Charisma. You can cast this cantrip underwater.",
             [TenguTrait]
-            ).WithOnCreature((Creature cr) =>
+            ).WithIllustration(produceFlame.Illustration).WithRulesBlockForSpell(produceFlame.SpellId).WithOnCreature(delegate (Creature cr)
             {
-                // you can probably implement the "casting is allowed underwater" thing by finding any AquaticCombat QEffect on the owner and then modifying the PreventTakingAction event. If you check that its specifically this spell being cast, then you can override it and allow it, but otherwise pass it to the default one (stored somewhere)
-                cr.AddQEffect(new QEffect("Mariner's Fire", "TO BE IMPLEMENTED"));
+                cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TenguTrait, Ability.Charisma, Trait.Primal).WithSpells([produceFlame.SpellId], 0);
             });
-        // TODO: add a "Special " section that says the special combined effect with Powerful Leap
         yield return new TrueFeat(
             ModManager.RegisterFeatName("One-Toed Hop", "One-Toed Hop {icon:Action}"),
             1,
             "Assuming a peculiar stance, you make a short hop on each toe.",
-            "You make a short 5ft Leap which does not trigger reactions which are triggered by movement, such as Attack of Opportunity.",
+            "You make a short 5ft Leap which does not trigger reactions that are triggered by movement, such as Attack of Opportunity.\n\n{b}Special{/b} If you also have the Powerful Leap feat, ",
             [TenguTrait]
             ).WithOnCreature((Creature cr) =>
             {
-                cr.AddQEffect(new QEffect("One-Toed Hop {icon:Action}", "To be implemented")
+                cr.AddQEffect(new QEffect("One-Toed Hop {icon:Action}", "Make a short Leap which doesn't trigger reactions to movement.")
                 {
                     ProvideActionIntoPossibilitySection = (QEffect self, PossibilitySection section) =>
                     {
@@ -99,7 +101,6 @@ public static class TenguAncestryLoader
                     }
                 });
             });
-        // TODO: Implement feat
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Scavenger's Search"),
             1,
@@ -108,9 +109,18 @@ public static class TenguAncestryLoader
             [TenguTrait]
             ).WithOnCreature((Creature cr) =>
             {
-                cr.AddQEffect(new QEffect("Scavenger's Search", "TO BE IMPLEMENTED"));
+                cr.AddQEffect(new QEffect("Scavenger's Search", "You have a +2 circumstance bonus when Seeking objects.")
+                {
+                    BonusToAttackRolls = (QEffect self, CombatAction action, Creature? target) =>
+                    {
+                        if (target == null) return null;
+                        // triggers on Seek actions, and Pseudocreature is the secret sauce that indicates it's a tile being seeked
+                        if (action.ActionId == ActionId.Seek && target.HasTrait(Trait.Pseudocreature)) return new Bonus(2, BonusType.Circumstance, "Scavenger's Search");
+                        else return null;
+                    }
+                });
             });
-        // TODO: Implement feat and test if the homebrew feels reasonably powerful
+        // TODO: Implement feat and test if the homebrew feels reasonably powerful. Also, reformat to be like "You gain the Squawk! reaction:" and then show a reaction block
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Squawk!", "Squawk! {icon:Reaction}"),
             1,
@@ -119,29 +129,33 @@ public static class TenguAncestryLoader
             [TenguTrait]
             ).WithOnCreature((Creature cr) =>
             {
-                cr.AddQEffect(new QEffect("Squawk! {icon:Reaction}", "TO BE IMPLEMENTED"));
+                cr.AddQEffect(new QEffect("Squawk! {icon:Reaction}", "Reroll a failed check to Demoralize.")
+                {
+                    // TODO: cannot be implemented (easily) until this event is added next update
+                    //RerollActiveRoll = 
+                });
             });
-        // TODO: Implement feat
+        Spell electricArc = AllSpells.CreateModernSpellTemplate(SpellId.ElectricArc, TenguTrait);
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Storm's Lash"),
             1,
             "Wind and lightning have always been friends to you.",
-            $"You can cast the {AllSpells.CreateSpellLink(SpellId.ElectricArc, TenguTrait)} cantrip as a primal innate spell at will.",
+            $"You can cast the {electricArc.ToSpellLink()} cantrip as a primal innate spell at will. Your spellcasting ability for this spell is Charisma.",
             [TenguTrait]
-            ).WithOnCreature((Creature cr) =>
+            ).WithIllustration(electricArc.Illustration).WithRulesBlockForSpell(electricArc.SpellId).WithOnCreature(delegate (Creature cr)
             {
-                cr.AddQEffect(new QEffect("Storm's Lash", "TO BE IMPLEMENTED"));
+                cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TenguTrait, Ability.Charisma, Trait.Primal).WithSpells([electricArc.SpellId], 0);
             });
-        // TODO: Implement feat
+        // TODO: Implement feat, and see what listed weapons actually exist. add at least one tengu weapon also
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Tengu Weapon Familiarity"),
             1,
             "You have eclectic experience with all sorts of weapons.",
             "You have familiarity with all weapons with the tengu trait, plus the katana, khakkara, temple sword, and wakizashi. For the purpose of proficiency, you treat any of these that are martial weapons as simple weapons and any that are advanced weapons as martial weapons. At 5th level, whenever you get a critical hit with one of these weapons, you get its critical specialization effect.\n\nIn addition, choose another weapon of your choice from the sword group: You are also familiar with this weapon, and gain the same benefits.",
             [TenguTrait]
-            ).WithOnCreature((Creature cr) =>
+            ).WithOnSheet((calculatedSheet) =>
             {
-                cr.AddQEffect(new QEffect("Tengu Weapon Familiarity", "TO BE IMPLEMENTED"));
+                calculatedSheet.Proficiencies.AddProficiencyAdjustment((traits) => traits.Contains(TenguWeaponTrait), Trait.Martial);
             });
         // TODO: Implement feat
         yield return new TrueFeat(
@@ -190,7 +204,7 @@ public static class TenguAncestryLoader
         yield return new HeritageSelectionFeat(
             ModManager.RegisterFeatName("Mountainkeeper Tengu"),
             "You come from a line of tengu ascetics, leaving you with a link to the spirits of the world and the Great Beyond.",
-            $"You can cast the {AllSpells.CreateSpellLink(SpellId.DisruptUndead, TenguTrait)} cantrip as an innate spell at will. Your spellcasting ability for this cantrip is Charisma. When you choose this feat, you can decide if the spell is primal or divine."
+            $"You can cast the {AllSpells.CreateSpellLink(SpellId.DisruptUndead, TenguTrait)} cantrip as an innate spell at will. Your spellcasting ability for this spell is Charisma. When you choose this feat, you can decide if the spell is primal or divine."
             ).WithOnCreature(delegate (Creature cr)
             {
                 cr.AddQEffect(new QEffect("Mountainkeeper Tengu", "TO BE IMPLEMENTED"));
@@ -221,7 +235,7 @@ public static class TenguAncestryLoader
             {
                 cr.AddQEffect(new QEffect()
                 {
-                    AdditionalUnarmedStrike = new Item(TalonArt, "talons", [Trait.Brawling, Trait.Agile, Trait.Finesse, Trait.Weapon, Trait.Melee, Trait.Unarmed, Trait.VersatileP])
+                    AdditionalUnarmedStrike = new Item(new ModdedIllustration("TenguAssets/talons.png"), "talons", [Trait.Brawling, Trait.Agile, Trait.Finesse, Trait.Weapon, Trait.Melee, Trait.Unarmed, Trait.VersatileP])
                     .WithWeaponProperties(new WeaponProperties("1d4", DamageKind.Slashing))
                 });
             });
@@ -239,10 +253,11 @@ public static class TenguAncestryLoader
 
     static CombatAction OneToedHop(Creature self)
     {
+        
         int leapDistance = self.HasEffect(QEffectId.PowerfulLeap) ? 2 : 1;
         return new CombatAction(self, IllustrationName.Jump, "One-Toed Hop",
             [Trait.Move, Trait.Basic],
-            "{i}Assuming a peculiar stance, you make a short hop on each toe.{/i}\n\nMake a short 5ft Leap which does not trigger reactions which are triggered by movement.",
+            "{i}Assuming a peculiar stance, you make a short hop on each toe.{/i}\n\nMake a short " + S.HeightenedVariable(leapDistance * 5, 5) + "ft Leap which does not trigger reactions which are triggered by movement.",
             new TileTarget((Creature jumper, Tile tile) => jumper.Occupies != null && tile.IsTrulyGenuinelyFreeTo(jumper) && jumper.DistanceTo(tile) <= leapDistance && jumper.Occupies.HasLineOfEffectToIgnoreLesser(tile) != CoverKind.Blocked, null)
             ).WithEffectOnChosenTargets(async delegate (CombatAction action, Creature jumper, ChosenTargets target)
             {
