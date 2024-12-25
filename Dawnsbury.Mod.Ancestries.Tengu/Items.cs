@@ -9,12 +9,20 @@ using Dawnsbury.Core.Possibilities;
 using Dawnsbury.Display.Illustrations;
 using Dawnsbury.Modding;
 
-// TODO: continue adding more weapons, then the weapon familiarity feat
+// TODO: i guess you could add the tengu thunder sling, but is there really any point?
 
 namespace Dawnsbury.Mods.Ancestries.Tengu
 {
     internal static class Items
     {
+        static public readonly Trait TenguWeaponTrait = ModManager.RegisterTrait("Tengu Weapon", new TraitProperties("Tengu Weapon", false) { ProficiencyName = "Tengu weapons" });
+
+        static public readonly Trait Katana = ModManager.RegisterTrait("Katana", new TraitProperties("Katana", false));
+        static public readonly Trait Khakkara = ModManager.RegisterTrait("Khakkara", new TraitProperties("Khakkara", false));
+        static public readonly Trait TempleSword = ModManager.RegisterTrait("TempleSword", new TraitProperties("Temple Sword", false));
+        static public readonly Trait Wakizashi = ModManager.RegisterTrait("Wakizashi", new TraitProperties("Wakizashi", false));
+        static public readonly Trait TenguGaleBlade = ModManager.RegisterTrait("TenguGaleBlade", new TraitProperties("Tengu Gale Blade", false));
+
         static readonly Illustration ChangeGripArt = new ModdedIllustration("TenguAssets/changeGrip.png");
 
         public static void RegisterItems()
@@ -24,29 +32,35 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
                 return new Item(name, new ModdedIllustration("TenguAssets/katana.png"), "katana", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.DeadlyD8, TwoHandD10, Trait.VersatileP])
                 {
                     WeaponProperties = new WeaponProperties("1d6", DamageKind.Slashing)
-                }.ImplementTwoHand(6, 10);
+                }.WithMainTrait(Katana).ImplementTwoHand(6, 10);
             });
             ModManager.RegisterNewItemIntoTheShop("khakkara", (ItemName name) =>
             {
-                return new Item(name, new ModdedIllustration("TenguAssets/khakkara.png"), "khakkara", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Club, Trait.Monk, TwoHandD10, Trait.VersatileP])
+                return new Item(name, new ModdedIllustration("TenguAssets/khakkara.png"), "khakkara", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Club, /*Trait.Monk,*/ TwoHandD10, Trait.VersatileP])
                 {
                     WeaponProperties = new WeaponProperties("1d6", DamageKind.Bludgeoning)
-                }.ImplementTwoHand(6, 10);
+                }.WithMainTrait(Khakkara).ImplementTwoHand(6, 10);
             });
             ModManager.RegisterNewItemIntoTheShop("temple sword", (ItemName name) =>
             {
-                return new Item(name, new ModdedIllustration("TenguAssets/templeSword.png"), "temple sword", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.Monk, Trait.Trip])
+                return new Item(name, new ModdedIllustration("TenguAssets/templeSword.png"), "temple sword", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, /*Trait.Monk,*/ Trait.Trip])
                 {
                     WeaponProperties = new WeaponProperties("1d8", DamageKind.Slashing)
-                };
+                }.WithMainTrait(TempleSword);
             });
-            // TODO: get art
             ModManager.RegisterNewItemIntoTheShop("wakizashi", (ItemName name) =>
             {
                 return new Item(name, new ModdedIllustration("TenguAssets/wakizashi.png"), "wakizashi", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.Agile, Trait.DeadlyD8, Trait.Finesse, Trait.VersatileP])
                 {
                     WeaponProperties = new WeaponProperties("1d4", DamageKind.Slashing)
-                };
+                }.WithMainTrait(Wakizashi);
+            });
+            ModManager.RegisterNewItemIntoTheShop("tengu gale blade", (ItemName name) =>
+            {
+                return new Item(name, new ModdedIllustration("TenguAssets/tenguGaleBlade.png"), "tengu gale blade", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.Agile, Trait.Disarm, Trait.Finesse, TenguAncestryLoader.TenguTrait])
+                {
+                    WeaponProperties = new WeaponProperties("1d6", DamageKind.Slashing)
+                }.WithMainTrait(TenguGaleBlade);
             });
         }
 
@@ -95,7 +109,7 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
                 {
                     item.WeaponProperties.DamageDieSize = diceSize;
                     item.Traits.Add(Trait.TwoHanded);
-                }).WithActionCost(lastActionWasToDraw ? 0 : 1);
+                }).WithActionCost(lastActionWasToDraw ? 0 : 1).WithShortDescription("Wield your weapon two-handed to deal more damage.");
         }
 
         // Produce a CombatAction for the given Item, which changes the item to its one-handed form.
@@ -107,7 +121,7 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
                 {
                     item.WeaponProperties.DamageDieSize = diceSize;
                     item.Traits.Remove(Trait.TwoHanded);
-                }).WithActionCost(0);
+                }).WithActionCost(0).WithShortDescription("Wield your weapon one-handed, at the expense of reduced damage.");
         }
     }
 }

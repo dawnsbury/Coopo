@@ -17,15 +17,16 @@ using Dawnsbury.Core.CharacterBuilder.Spellcasting;
 using Dawnsbury.Core.CharacterBuilder.FeatsDb.Spellbook;
 using Dawnsbury.Display.Text;
 using Dawnsbury.Core.Mechanics.Core;
+using Dawnsbury.Auxiliary;
+using Dawnsbury.Audio;
 
 namespace Dawnsbury.Mods.Ancestries.Tengu;
 
+// TODO: try making a mod that allows custom music? should be fairly straight forward, mess with Dawnsbury.Audio.Truesong using reflection
 
 public static class TenguAncestryLoader
 {
-    static readonly Trait TenguTrait = ModManager.RegisterTrait("Tengu", new TraitProperties("Tengu", true) { IsAncestryTrait = true });
-
-    static readonly Trait TenguWeaponTrait = ModManager.RegisterTrait("Tengu Weapon", new TraitProperties("Tengu Weapon", false) { ProficiencyName = "Tengu weapons" });
+    public static readonly Trait TenguTrait = ModManager.RegisterTrait("Tengu", new TraitProperties("Tengu", true) { IsAncestryTrait = true });
 
     [DawnsburyDaysModMainMethod]
     public static void LoadMod()
@@ -92,7 +93,6 @@ public static class TenguAncestryLoader
                 {
                     ProvideActionIntoPossibilitySection = (QEffect self, PossibilitySection section) =>
                     {
-                        // TODO: check this section is right
                         if (section.PossibilitySectionId == PossibilitySectionId.Movement)
                         {
                             return new ActionPossibility(OneToedHop(cr));
@@ -146,8 +146,9 @@ public static class TenguAncestryLoader
             {
                 cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TenguTrait, Ability.Charisma, Trait.Primal).WithSpells([electricArc.SpellId], 0);
             });
-        // TODO: Implement feat, and see what listed weapons actually exist. add at least one tengu weapon also
-        yield return new TrueFeat(
+        // Tengu Weapon Familiarity and Subfeats
+        List<Trait> familiarWeapons = [Items.Katana, Items.Khakkara, Items.TempleSword, Items.Wakizashi, Items.TenguGaleBlade];
+        Feat TenguWeaponFamiliarity = new TrueFeat(
             ModManager.RegisterFeatName("Tengu Weapon Familiarity"),
             1,
             "You have eclectic experience with all sorts of weapons.",
@@ -155,29 +156,59 @@ public static class TenguAncestryLoader
             [TenguTrait]
             ).WithOnSheet((calculatedSheet) =>
             {
-                calculatedSheet.Proficiencies.AddProficiencyAdjustment((traits) => traits.Contains(TenguWeaponTrait), Trait.Martial);
+                foreach (Trait t in familiarWeapons)
+                {
+                    calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(t) && traits.Contains(Trait.Martial), Trait.Simple);
+                    calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(t) && traits.Contains(Trait.Advanced), Trait.Martial);
+                }
             });
-        // TODO: Implement feat
+        TenguWeaponFamiliarity.Subfeats = [];
+        foreach (Item item in Core.Mechanics.Treasure.Items.ShopItems)
+        {
+            if (!item.HasTrait(Trait.Sword)) continue;
+            if (item.MainTrait == Trait.None) continue;
+            if (item.Runes.Count() != 0) continue;
+            if (familiarWeapons.Where(weaponTrait => item.HasTrait(weaponTrait)).Any()) continue; // if this weapon is anything already covered by the base feat, don't list it
+            if (item.HasTrait(Trait.Simple)) continue; // no point taking extra proficiency in a weapon that everyone is already proficient in
+            TenguWeaponFamiliarity.Subfeats.Add(new Feat(
+                ModManager.RegisterFeatName($"TenguWeaponFamiliarity:{item.Name}", item.Name.Capitalize()),
+                $"You have experience with {item.Name}s.",
+                $"For the purpose of proficiency, you treat {item.Name}s as {(item.HasTrait(Trait.Advanced)? "martial" : "simple")} weapons.",
+                traits: [],
+                subfeats: []).WithOnSheet((calculatedSheet) =>
+                {
+                    calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(item.MainTrait) && traits.Contains(Trait.Martial), Trait.Simple);
+                    calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(item.MainTrait) && traits.Contains(Trait.Advanced), Trait.Martial);
+                }));
+        }
+        yield return TenguWeaponFamiliarity;
+        // end of Tengu Weapon Familiarity
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Uncanny Agility"),
             1,
             "You have near-supernatural poise that lets you move swiftly across the most unsteady surfaces.",
             "You gain the Feather Step skill feat, which allows you to Step into difficult terrain.",
             [TenguTrait]
-            ).WithOnCreature((Creature cr) =>
+            ).WithOnSheet((calculatedSheet) =>
             {
-                cr.AddQEffect(new QEffect("Uncanny Agility", "TO BE IMPLEMENTED"));
+                calculatedSheet.GrantFeat(FeatName.FeatherStep);
             });
-        // TODO: Implement feat
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Waxed Feathers"),
             1,
             "Your feathers are coated in a waxy substance that repels water.",
             "You gain a +1 circumstance bonus to saving throws against effects that have the water trait.",
             [TenguTrait]
-            ).WithOnCreature((Creature cr) =>
+            ).WithPermanentQEffect((QEffect self) =>
             {
-                cr.AddQEffect(new QEffect("Waxed Feathers", "TO BE IMPLEMENTED"));
+                self.Name = "Waxed Feathers";
+                self.Description = "You have a +1 circumstance bonus to saving throws against water effects.";
+                self.BonusToDefenses = (QEffect self, CombatAction? action, Defense defense) =>
+                {
+                    if (!defense.IsSavingThrow()) return null;
+                    else if (action != null && action.HasTrait(Trait.Water)) return new Bonus(1, BonusType.Circumstance, "Waxed Feathers");
+                    else return null;
+                };
             });
     }
 
@@ -236,7 +267,7 @@ public static class TenguAncestryLoader
                 cr.AddQEffect(new QEffect()
                 {
                     AdditionalUnarmedStrike = new Item(new ModdedIllustration("TenguAssets/talons.png"), "talons", [Trait.Brawling, Trait.Agile, Trait.Finesse, Trait.Weapon, Trait.Melee, Trait.Unarmed, Trait.VersatileP])
-                    .WithWeaponProperties(new WeaponProperties("1d4", DamageKind.Slashing))
+                    .WithWeaponProperties(new WeaponProperties("1d4", DamageKind.Slashing)).WithSoundEffect(SfxName.Fist2)
                 });
             });
         // TODO: implement heritage, maybe change the wording of the effect, since the effect will probably just be "you can move through water"
