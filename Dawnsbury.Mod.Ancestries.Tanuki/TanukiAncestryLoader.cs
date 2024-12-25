@@ -10,6 +10,7 @@ using Dawnsbury.Core.Mechanics.Treasure;
 using Dawnsbury.Core;
 using Microsoft.Xna.Framework;
 using System.Diagnostics;
+using Dawnsbury.Audio;
 
 namespace Dawnsbury.Mods.Ancestries.Tanuki;
 
@@ -64,7 +65,7 @@ public static class TanukiAncestryLoader
                 cr.AddQEffect(new QEffect()
                 {
                     AdditionalUnarmedStrike = new Item(IllustrationName.ShakeItOff, "belly", [Trait.Forceful, Trait.Weapon, Trait.Melee, Trait.Unarmed, Trait.Brawling])
-                    .WithWeaponProperties(new WeaponProperties("1d6", DamageKind.Bludgeoning))
+                    .WithWeaponProperties(new WeaponProperties("1d6", DamageKind.Bludgeoning)).WithSoundEffect(SfxName.Fist2)
                 });
             });
 
