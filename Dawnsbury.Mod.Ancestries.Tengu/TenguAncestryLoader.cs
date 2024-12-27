@@ -19,6 +19,8 @@ using Dawnsbury.Display.Text;
 using Dawnsbury.Core.Mechanics.Core;
 using Dawnsbury.Auxiliary;
 using Dawnsbury.Audio;
+using Microsoft.Xna.Framework;
+using Dawnsbury.Core.CharacterBuilder.Selections.Options;
 
 namespace Dawnsbury.Mods.Ancestries.Tengu;
 
@@ -111,6 +113,7 @@ public static class TenguAncestryLoader
             {
                 cr.AddQEffect(new QEffect("Scavenger's Search", "You have a +2 circumstance bonus when Seeking objects.")
                 {
+                    // TODO: i think the new update added a way to make this work smoother
                     BonusToAttackRolls = (QEffect self, CombatAction action, Creature? target) =>
                     {
                         if (target == null) return null;
@@ -120,19 +123,28 @@ public static class TenguAncestryLoader
                     }
                 });
             });
-        // TODO: Implement feat and test if the homebrew feels reasonably powerful. Also, reformat to be like "You gain the Squawk! reaction:" and then show a reaction block
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Squawk!", "Squawk! {icon:Reaction}"),
             1,
             "You let out an awkward squawk, ruffle your feathers, or fake some other birdlike tic to cover up a poor attempt to intimidate.",
-            "{b}Frequency{/b} Once per day\n{b}Trigger{/b} You fail or critically fail an Intimidation check to Demoralize a creature without the tengu trait\n\nReroll the failed Intimidation check and keep the new result. ",
+            "{b}Frequency{/b} Once per day\n{b}Trigger{/b} You fail or critically fail an Intimidation check to Demoralize a creature without the tengu trait\n\nReroll the failed Intimidation check and keep the better result.",
             [TenguTrait]
             ).WithOnCreature((Creature cr) =>
             {
+                if (cr.PersistentUsedUpResources.UsedUpActions.Contains("squawk")) return;
+
                 cr.AddQEffect(new QEffect("Squawk! {icon:Reaction}", "Reroll a failed check to Demoralize.")
                 {
-                    // TODO: cannot be implemented (easily) until this event is added next update
-                    //RerollActiveRoll = 
+                    RerollActiveRoll = async (QEffect self, CheckBreakdownResult result, CombatAction action, Creature target) =>
+                    {
+                        if (action.ActionId != ActionId.Demoralize) return RerollDirection.DoNothing;
+                        if (result.CheckResult == CheckResult.Success || result.CheckResult == CheckResult.CriticalSuccess) return RerollDirection.DoNothing;
+                        bool playerConfirms = await self.Owner.AskToUseReaction("You failed your check to Demoralize. Do you want to use {b}Squawk!{/b} to reroll the check and take the better result?");
+                        if (!playerConfirms) return RerollDirection.DoNothing;
+                        self.ExpiresAt = ExpirationCondition.Immediately;
+                        self.Owner.PersistentUsedUpResources.UsedUpActions.Add("squawk");
+                        return RerollDirection.RerollAndKeepBest;
+                    }
                 });
             });
         Spell electricArc = AllSpells.CreateModernSpellTemplate(SpellId.ElectricArc, TenguTrait);
@@ -147,6 +159,7 @@ public static class TenguAncestryLoader
                 cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TenguTrait, Ability.Charisma, Trait.Primal).WithSpells([electricArc.SpellId], 0);
             });
         // Tengu Weapon Familiarity and Subfeats
+        // TODO: maybe convert the subfeats into a SingleFeatSelectionOption, so you can mark it as optional
         List<Trait> familiarWeapons = [Items.Katana, Items.Khakkara, Items.TempleSword, Items.Wakizashi, Items.TenguGaleBlade];
         Feat TenguWeaponFamiliarity = new TrueFeat(
             ModManager.RegisterFeatName("Tengu Weapon Familiarity"),
@@ -167,7 +180,7 @@ public static class TenguAncestryLoader
         {
             if (!item.HasTrait(Trait.Sword)) continue;
             if (item.MainTrait == Trait.None) continue;
-            if (item.Runes.Count() != 0) continue;
+            if (item.Runes.Count != 0) continue;
             if (familiarWeapons.Where(weaponTrait => item.HasTrait(weaponTrait)).Any()) continue; // if this weapon is anything already covered by the base feat, don't list it
             if (item.HasTrait(Trait.Simple)) continue; // no point taking extra proficiency in a weapon that everyone is already proficient in
             TenguWeaponFamiliarity.Subfeats.Add(new Feat(
@@ -222,41 +235,113 @@ public static class TenguAncestryLoader
             {
                 cr.GetAttackItem("beak")?.Traits.Add(Trait.DeadlyD8);
             });
-        // TODO: implement heritage
         yield return new HeritageSelectionFeat(
             ModManager.RegisterFeatName("Jinxed Tengu"),
             "Your lineage has been exposed to curse after curse, and now they slide off your feathers like rain.",
-            "If you succeed at a saving throw against a curse or misfortune effect, you get a critical success instead. When you would gain the doomed condition, attempt a DC 17 flat check. On a success, reduce the value of the doomed condition you would gain by 1."
+            "If you succeed at a saving throw against a curse effect, you get a critical success instead. When you would gain the doomed condition, attempt a DC 17 flat check. On a success, reduce the value of the doomed condition you would gain by 1."
             ).WithOnCreature(delegate (Creature cr)
             {
-                cr.AddQEffect(new QEffect("Jinxed Tengu", "TO BE IMPLEMENTED"));
+                cr.AddQEffect(new QEffect("Jinxed Tengu", "When saving against curse effects, your successes are upgraded to critical successes. When you gain the doomed condition, make a DC17 flat check to reduce the gained value by 1.")
+                {
+                    AdjustSavingThrowCheckResult = (QEffect self, Defense defense, CombatAction action, CheckResult result) =>
+                    {
+                        if (action.HasTrait(Trait.Curse) && defense.IsSavingThrow() && result == CheckResult.Success)
+                            return CheckResult.CriticalSuccess;
+                        else return result;
+                    },
+                    YouAcquireQEffect = (QEffect self, QEffect applied) =>
+                    {
+                        if (applied.Id == QEffectId.Doomed)
+                        {
+                            (CheckResult result, string breakdown) = Checks.RollFlatCheck(17);
+                            if (result == CheckResult.Success || result == CheckResult.CriticalSuccess)
+                            {
+                                self.Owner.Occupies.Overhead("Jinx!", Color.DarkGreen, self.Owner.Name + " reduced an incoming doomed condition by 1 via Jinxed Tengu.", "Jinxed Tengu", "DC 17 flat check = " + breakdown);
+                                applied.Value--;
+                                if (applied.Value == 0) return null;
+                                else return applied;
+                            }
+                            else
+                            {
+                                self.Owner.Battle.Log(self.Owner.Name + "'s Jinxed Tengu failed to reduce an incoming doomed condition.", "Jinxed Tengu", "DC 17 flat check = " + breakdown);
+                                return applied;
+                            }
+                        }
+                        else
+                        {
+                            return applied;
+                        }
+                    }
+                });
             });
-        // TODO: implement heritage, replace the Great Beyond with whatever lore equivalent/see what pathbuilder does
+        // Start of Mountainkeeper Tengu implementation
+        Spell disruptUndead = AllSpells.CreateModernSpellTemplate(SpellId.DisruptUndead, TenguTrait);
+        Trait MountainkeeperTraditionSelectionFeat = ModManager.RegisterTrait("Mountainkeeper Tradition Selection Feat", new TraitProperties("", false));
         yield return new HeritageSelectionFeat(
             ModManager.RegisterFeatName("Mountainkeeper Tengu"),
-            "You come from a line of tengu ascetics, leaving you with a link to the spirits of the world and the Great Beyond.",
-            $"You can cast the {AllSpells.CreateSpellLink(SpellId.DisruptUndead, TenguTrait)} cantrip as an innate spell at will. Your spellcasting ability for this spell is Charisma. When you choose this feat, you can decide if the spell is primal or divine."
-            ).WithOnCreature(delegate (Creature cr)
+            "You come from a line of tengu ascetics, leaving you with a link to the spirits of the world.",
+            $"You can cast the {disruptUndead.ToSpellLink()} cantrip as a innate spell at will. Your spellcasting ability for this spell is Charisma. When you choose this feat, you can decide if the spell is primal or divine."
+            ).WithOnSheet(calculatedSheet =>
             {
-                cr.AddQEffect(new QEffect("Mountainkeeper Tengu", "TO BE IMPLEMENTED"));
+                calculatedSheet.AddSelectionOptionRightNow(
+                    new SingleFeatSelectionOption("MountainkeeperTraditionSelection", "Mountainkeeper Tengu Cantrip Tradition", 0,
+                        feat => feat.HasTrait(MountainkeeperTraditionSelectionFeat))
+                    );
             });
-        // TODO: implement heritage, requires homebrew cause the original effect doesnt work in dawnsbury days
+        // tradition selection "feats" for Mountainkeeper Tengu
+        ModManager.AddFeat(new Feat(
+            ModManager.RegisterFeatName("MountainKeeperPrimal", "Primal"),
+            null,
+            $"Your {disruptUndead.ToSpellLink()} innate spell is a primal spell.",
+            [MountainkeeperTraditionSelectionFeat],
+            null).WithOnCreature((Creature cr) =>
+            {
+                cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TenguTrait, Ability.Charisma, Trait.Primal).WithSpells([disruptUndead.SpellId], 0);
+            }));
+        ModManager.AddFeat(new Feat(
+            ModManager.RegisterFeatName("MountainKeeperDivine", "Divine"),
+            null,
+            $"Your {disruptUndead.ToSpellLink()} innate spell is a divine spell.",
+            [MountainkeeperTraditionSelectionFeat],
+            null).WithOnCreature((Creature cr) =>
+            {
+                cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TenguTrait, Ability.Charisma, Trait.Divine).WithSpells([disruptUndead.SpellId], 0);
+            }));
+        // End of Mountainkeeper Tengu implementation
         yield return new HeritageSelectionFeat(
             ModManager.RegisterFeatName("Skyborn Tengu"),
             "Your bones may be especially light, you may be a rare tengu with wings, or your connection to the spirits of wind and sky might be stronger than most, slowing your descent through the air.",
-            "You take no damage from falling, regardless of the distance you fall."
-            ).WithOnCreature(delegate (Creature cr)
+            $"You gain a +1 circumstance bonus to saving throws against effects that have the air trait, and if you roll a success on a save against an air effect, you get a critical success instead. In addition, you gain the Powerful Leap feat."
+            ).WithOnSheet((calculatedSheet) =>
             {
-                cr.AddQEffect(new QEffect("Skyborn Tengu", "TO BE IMPLEMENTED"));
+                calculatedSheet.GrantFeat(FeatName.PowerfulLeap);
+            }).WithOnCreature((Creature cr) =>
+            {
+                cr.AddQEffect(new QEffect("Skyborn Tengu", "You have a +1 bonus to saves against air effects, and successful saves become critical successes.")
+                {
+                    AdjustSavingThrowCheckResult = (QEffect self, Defense defense, CombatAction action, CheckResult result) =>
+                    {
+                        if (action.HasTrait(Trait.Air) && defense.IsSavingThrow() && result == CheckResult.Success)
+                            return CheckResult.CriticalSuccess;
+                        else return result;
+                    },
+                    BonusToDefenses = (QEffect self, CombatAction? action, Defense defense) =>
+                    {
+                        if (!defense.IsSavingThrow()) return null;
+                        else if (action != null && action.HasTrait(Trait.Air)) return new Bonus(1, BonusType.Circumstance, "Skyborn Tengu");
+                        else return null;
+                    }
+                });
             });
-        // TODO: implement heritage, replace Hei Feng with the equivalent lore or just remove it
+        // TODO: maybe add more to this feat later
         yield return new HeritageSelectionFeat(
             ModManager.RegisterFeatName("Stormtossed Tengu"),
-            "Whether due to a blessing from Hei Feng or hatching from your egg during a squall, you are resistant to storms.",
-            "You gain electricity resistance equal to half your level (minimum 1). You automatically succeed at the flat check to target a concealed creature if that creature is concealed only by rain or fog."
+            "Whether due to a storm god's blessing or hatching from your egg during a squall, you are resistant to storms.",
+            "You gain electricity resistance equal to half your level (minimum 1)."
             ).WithOnCreature(delegate (Creature cr)
             {
-                cr.AddQEffect(new QEffect("Stormtossed Tengu", "TO BE IMPLEMENTED"));
+                int resistance = Math.Max(1, cr.Level / 2);
+                cr.WeaknessAndResistance.AddResistance(DamageKind.Electricity, resistance);
             });
         yield return new HeritageSelectionFeat(
             ModManager.RegisterFeatName("Taloned Tengu"),
@@ -277,7 +362,6 @@ public static class TenguAncestryLoader
             "You gain a swim Speed of 15 feet."
             ).WithOnCreature(delegate (Creature cr)
             {
-
                 cr.AddQEffect(new QEffect("Wavediver Tengu", "TO BE IMPLEMENTED"));
             });
     }
