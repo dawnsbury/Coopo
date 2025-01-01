@@ -81,7 +81,10 @@ public static class TenguAncestryLoader
             [TenguTrait]
             ).WithIllustration(produceFlame.Illustration).WithRulesBlockForSpell(produceFlame.SpellId).WithOnCreature(delegate (Creature cr)
             {
-                cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TenguTrait, Ability.Charisma, Trait.Primal).WithSpells([produceFlame.SpellId], 0);
+                cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TenguTrait, Ability.Charisma, Trait.Primal).WithSpells([produceFlame.SpellId], cr.MaximumSpellRank);
+            }).WithOnSheet(calculatedSheet =>
+            {
+                calculatedSheet.SetProficiency(Trait.Spell, Proficiency.Trained);
             });
         yield return new TrueFeat(
             ModManager.RegisterFeatName("One-Toed Hop", "One-Toed Hop {icon:Action}"),
@@ -156,16 +159,19 @@ public static class TenguAncestryLoader
             [TenguTrait]
             ).WithIllustration(electricArc.Illustration).WithRulesBlockForSpell(electricArc.SpellId).WithOnCreature(delegate (Creature cr)
             {
-                cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TenguTrait, Ability.Charisma, Trait.Primal).WithSpells([electricArc.SpellId], 0);
+                cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TenguTrait, Ability.Charisma, Trait.Primal).WithSpells([electricArc.SpellId], cr.MaximumSpellRank);
+            }).WithOnSheet(calculatedSheet =>
+            {
+                calculatedSheet.SetProficiency(Trait.Spell, Proficiency.Trained);
             });
         // Tengu Weapon Familiarity and Subfeats
-        // TODO: maybe convert the subfeats into a SingleFeatSelectionOption, so you can mark it as optional
         List<Trait> familiarWeapons = [Items.Katana, Items.Khakkara, Items.TempleSword, Items.Wakizashi, Items.TenguGaleBlade];
-        Feat TenguWeaponFamiliarity = new TrueFeat(
+        Trait TenguWeaponFamiliaritySwordChoiceTrait = ModManager.RegisterTrait("TenguWeaponFamiliaritySwordChoiceTrait", new TraitProperties("TWFCT", false));
+        yield return new TrueFeat(
             ModManager.RegisterFeatName("Tengu Weapon Familiarity"),
             1,
             "You have eclectic experience with all sorts of weapons.",
-            "You have familiarity with all weapons with the tengu trait, plus the katana, khakkara, temple sword, and wakizashi. For the purpose of proficiency, you treat any of these that are martial weapons as simple weapons and any that are advanced weapons as martial weapons. At 5th level, whenever you get a critical hit with one of these weapons, you get its critical specialization effect.\n\nIn addition, choose another weapon of your choice from the sword group: You are also familiar with this weapon, and gain the same benefits.",
+            "You have familiarity with all weapons with the tengu trait, plus the katana, khakkara, temple sword, and wakizashi. For the purpose of proficiency, you treat any of these that are martial weapons as simple weapons and any that are advanced weapons as martial weapons. At 5th level, whenever you get a critical hit with one of these weapons, you get its critical specialization effect.\n\nIn addition, you may choose another weapon of your choice from the sword group: You are also familiar with this weapon, and gain the same benefits.",
             [TenguTrait]
             ).WithOnSheet((calculatedSheet) =>
             {
@@ -174,27 +180,30 @@ public static class TenguAncestryLoader
                     calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(t) && traits.Contains(Trait.Martial), Trait.Simple);
                     calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(t) && traits.Contains(Trait.Advanced), Trait.Martial);
                 }
+                calculatedSheet.AddSelectionOptionRightNow(
+                    new SingleFeatSelectionOption("TenguWeaponFamiliaritySwordChoice", "Tengu Weapon Familiarity", 1,
+                        feat => feat.HasTrait(TenguWeaponFamiliaritySwordChoiceTrait)
+                        ).WithIsOptional()
+                    );
             });
-        TenguWeaponFamiliarity.Subfeats = [];
         foreach (Item item in Core.Mechanics.Treasure.Items.ShopItems)
         {
             if (!item.HasTrait(Trait.Sword)) continue;
             if (item.MainTrait == Trait.None) continue;
             if (item.Runes.Count != 0) continue;
             if (familiarWeapons.Where(weaponTrait => item.HasTrait(weaponTrait)).Any()) continue; // if this weapon is anything already covered by the base feat, don't list it
-            if (item.HasTrait(Trait.Simple)) continue; // no point taking extra proficiency in a weapon that everyone is already proficient in
-            TenguWeaponFamiliarity.Subfeats.Add(new Feat(
+            if (item.HasTrait(Trait.Simple)) continue; // this feat doesn't achieve anything for simple weapons
+            yield return new Feat(
                 ModManager.RegisterFeatName($"TenguWeaponFamiliarity:{item.Name}", item.Name.Capitalize()),
                 $"You have experience with {item.Name}s.",
-                $"For the purpose of proficiency, you treat {item.Name}s as {(item.HasTrait(Trait.Advanced)? "martial" : "simple")} weapons.",
-                traits: [],
-                subfeats: []).WithOnSheet((calculatedSheet) =>
+                $"For the purpose of proficiency, you treat {item.Name}s as {(item.HasTrait(Trait.Advanced) ? "martial" : "simple")} weapons.",
+                traits: [TenguWeaponFamiliaritySwordChoiceTrait],
+                subfeats: null).WithOnSheet((calculatedSheet) =>
                 {
                     calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(item.MainTrait) && traits.Contains(Trait.Martial), Trait.Simple);
                     calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(item.MainTrait) && traits.Contains(Trait.Advanced), Trait.Martial);
-                }));
+                });
         }
-        yield return TenguWeaponFamiliarity;
         // end of Tengu Weapon Familiarity
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Uncanny Agility"),
@@ -274,40 +283,19 @@ public static class TenguAncestryLoader
                     }
                 });
             });
-        // Start of Mountainkeeper Tengu implementation
         Spell disruptUndead = AllSpells.CreateModernSpellTemplate(SpellId.DisruptUndead, TenguTrait);
         Trait MountainkeeperTraditionSelectionFeat = ModManager.RegisterTrait("Mountainkeeper Tradition Selection Feat", new TraitProperties("", false));
         yield return new HeritageSelectionFeat(
             ModManager.RegisterFeatName("Mountainkeeper Tengu"),
             "You come from a line of tengu ascetics, leaving you with a link to the spirits of the world.",
-            $"You can cast the {disruptUndead.ToSpellLink()} cantrip as a innate spell at will. Your spellcasting ability for this spell is Charisma. When you choose this feat, you can decide if the spell is primal or divine."
-            ).WithOnSheet(calculatedSheet =>
+            $"You can cast the {disruptUndead.ToSpellLink()} cantrip as a primal innate spell at will. Your spellcasting ability for this spell is Charisma."
+            ).WithOnCreature((Creature cr) =>
             {
-                calculatedSheet.AddSelectionOptionRightNow(
-                    new SingleFeatSelectionOption("MountainkeeperTraditionSelection", "Mountainkeeper Tengu Cantrip Tradition", 0,
-                        feat => feat.HasTrait(MountainkeeperTraditionSelectionFeat))
-                    );
+                cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TenguTrait, Ability.Charisma, Trait.Primal).WithSpells([disruptUndead.SpellId], cr.MaximumSpellRank);
+            }).WithOnSheet((calculatedSheet) =>
+            {
+                calculatedSheet.SetProficiency(Trait.Spell, Proficiency.Trained);
             });
-        // tradition selection "feats" for Mountainkeeper Tengu
-        ModManager.AddFeat(new Feat(
-            ModManager.RegisterFeatName("MountainKeeperPrimal", "Primal"),
-            null,
-            $"Your {disruptUndead.ToSpellLink()} innate spell is a primal spell.",
-            [MountainkeeperTraditionSelectionFeat],
-            null).WithOnCreature((Creature cr) =>
-            {
-                cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TenguTrait, Ability.Charisma, Trait.Primal).WithSpells([disruptUndead.SpellId], 0);
-            }));
-        ModManager.AddFeat(new Feat(
-            ModManager.RegisterFeatName("MountainKeeperDivine", "Divine"),
-            null,
-            $"Your {disruptUndead.ToSpellLink()} innate spell is a divine spell.",
-            [MountainkeeperTraditionSelectionFeat],
-            null).WithOnCreature((Creature cr) =>
-            {
-                cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TenguTrait, Ability.Charisma, Trait.Divine).WithSpells([disruptUndead.SpellId], 0);
-            }));
-        // End of Mountainkeeper Tengu implementation
         yield return new HeritageSelectionFeat(
             ModManager.RegisterFeatName("Skyborn Tengu"),
             "Your bones may be especially light, you may be a rare tengu with wings, or your connection to the spirits of wind and sky might be stronger than most, slowing your descent through the air.",
@@ -355,20 +343,41 @@ public static class TenguAncestryLoader
                     .WithWeaponProperties(new WeaponProperties("1d4", DamageKind.Slashing)).WithSoundEffect(SfxName.Fist2)
                 });
             });
-        // TODO: implement heritage, maybe change the wording of the effect, since the effect will probably just be "you can move through water"
         yield return new HeritageSelectionFeat(
             ModManager.RegisterFeatName("Wavediver Tengu"),
             "You're one of the rare tengu who can cut through water like a bird through air, and you often lurk in rivers or oceans where few expect you.",
-            "You gain a swim Speed of 15 feet."
+            "You gain a swim Speed. This allows you to:\n• Move through deep water tiles.\n• Ignore difficult terrain imposed by shallow water.\n• Ignore the flat-footed and difficult terrain penalties from being underwater."
             ).WithOnCreature(delegate (Creature cr)
             {
-                cr.AddQEffect(new QEffect("Wavediver Tengu", "TO BE IMPLEMENTED"));
+                cr.AddQEffect(QEffect.Swimming());
+                //cr.AddQEffect(new QEffect("Swimming", "While swimming, your speed is reduced to 15ft.")
+                //{
+                //    Id = QEffectId.Swimming,
+                //    BonusToAllSpeeds = (QEffect self) =>
+                //    {
+                //        // reduce speed to 15ft, or apply no reduction if speed is already that low
+                //        int speedDiffWhenSwimming = Math.Min(3 - self.Owner.BaseSpeed, 0);
+                //        // if in deep water, shallow water, or underwater, reduce speed to 15ft
+                //        if (self.Owner.Occupies.Kind == TileKind.Water || self.Owner.Occupies.Kind == TileKind.ShallowWater)
+                //        {
+                //            return new Bonus(speedDiffWhenSwimming, BonusType.Untyped, "Swimming");
+                //        }
+                //        // allow to move at the speed of difficult terrain when in aquatic combat, in case the base speed halved is more than the swim speed
+                //        // (because it would be weird for a fast swimming race to be slower at swimming than anyone else)
+                //        if (self.Owner.FindQEffect(QEffectId.AquaticCombat) != null)
+                //        {
+                //            speedDiffWhenSwimming = Math.Max(speedDiffWhenSwimming, self.Owner.BaseSpeed / 2);
+                //            return new Bonus(speedDiffWhenSwimming, BonusType.Untyped, "Swimming");
+                //        }
+                //        else return null;
+                //    }
+                //});
             });
     }
 
     static CombatAction OneToedHop(Creature self)
     {
-        
+
         int leapDistance = self.HasEffect(QEffectId.PowerfulLeap) ? 2 : 1;
         return new CombatAction(self, IllustrationName.Jump, "One-Toed Hop",
             [Trait.Move, Trait.Basic],
