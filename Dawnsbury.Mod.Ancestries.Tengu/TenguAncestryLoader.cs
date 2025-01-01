@@ -24,8 +24,6 @@ using Dawnsbury.Core.CharacterBuilder.Selections.Options;
 
 namespace Dawnsbury.Mods.Ancestries.Tengu;
 
-// TODO: try making a mod that allows custom music? should be fairly straight forward, mess with Dawnsbury.Audio.Truesong using reflection
-
 public static class TenguAncestryLoader
 {
     public static readonly Trait TenguTrait = ModManager.RegisterTrait("Tengu", new TraitProperties("Tengu", true) { IsAncestryTrait = true });
@@ -90,7 +88,7 @@ public static class TenguAncestryLoader
             ModManager.RegisterFeatName("One-Toed Hop", "One-Toed Hop {icon:Action}"),
             1,
             "Assuming a peculiar stance, you make a short hop on each toe.",
-            "You make a short 5ft Leap which does not trigger reactions that are triggered by movement, such as Attack of Opportunity.\n\n{b}Special{/b} If you also have the Powerful Leap feat, ",
+            "You make a short 5ft Leap which does not trigger reactions that are triggered by movement, such as Attack of Opportunity.\n\n{b}Special{/b} If you also have the Powerful Leap feat, your Leap goes 5ft further.",
             [TenguTrait]
             ).WithOnCreature((Creature cr) =>
             {
@@ -171,7 +169,7 @@ public static class TenguAncestryLoader
             ModManager.RegisterFeatName("Tengu Weapon Familiarity"),
             1,
             "You have eclectic experience with all sorts of weapons.",
-            "You have familiarity with all weapons with the tengu trait, plus the katana, khakkara, temple sword, and wakizashi. For the purpose of proficiency, you treat any of these that are martial weapons as simple weapons and any that are advanced weapons as martial weapons. At 5th level, whenever you get a critical hit with one of these weapons, you get its critical specialization effect.\n\nIn addition, you may choose another weapon of your choice from the sword group: You are also familiar with this weapon, and gain the same benefits.",
+            "You have familiarity with all weapons with the tengu trait, plus the katana, khakkara, temple sword, and wakizashi. For the purpose of proficiency, you treat any of these that are martial weapons as simple weapons and any that are advanced weapons as martial weapons.\n\nIn addition, you may choose another weapon of your choice from the sword group: You are also familiar with this weapon, and gain the same benefits.\n\nAt 5th level, whenever you get a critical hit with one of these weapons, you get its {tooltip:criteffect}critical specialization effect{/}.",
             [TenguTrait]
             ).WithOnSheet((calculatedSheet) =>
             {
@@ -185,6 +183,14 @@ public static class TenguAncestryLoader
                         feat => feat.HasTrait(TenguWeaponFamiliaritySwordChoiceTrait)
                         ).WithIsOptional()
                     );
+            }).WithOnCreature((Creature cr) =>
+            {
+                // grant crit spec with listed weapons at level 5
+                if (cr.Level < 5) return;
+                cr.AddQEffect(new QEffect()
+                {
+                    YouHaveCriticalSpecialization = (QEffect self, Item weapon, CombatAction _, Creature _) => familiarWeapons.Any(trait => weapon.HasTrait(trait))
+                });
             });
         foreach (Item item in Core.Mechanics.Treasure.Items.ShopItems)
         {
@@ -202,6 +208,14 @@ public static class TenguAncestryLoader
                 {
                     calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(item.MainTrait) && traits.Contains(Trait.Martial), Trait.Simple);
                     calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(item.MainTrait) && traits.Contains(Trait.Advanced), Trait.Martial);
+                }).WithOnCreature((Creature cr) =>
+                {
+                    // grant crit spec with chosen weapon at level 5
+                    if (cr.Level < 5) return;
+                    cr.AddQEffect(new QEffect()
+                    {
+                        YouHaveCriticalSpecialization = (QEffect self, Item weapon, CombatAction _, Creature _) => weapon.HasTrait(item.MainTrait)
+                    });
                 });
         }
         // end of Tengu Weapon Familiarity
@@ -231,7 +245,8 @@ public static class TenguAncestryLoader
                     else if (action != null && action.HasTrait(Trait.Water)) return new Bonus(1, BonusType.Circumstance, "Waxed Feathers");
                     else return null;
                 };
-            });
+            }).WithPrerequisite(calculatedSheet => calculatedSheet.Sheet.Heritage?.Name == "Wavediver Tengu", "You must be a Wavediver Tengu to choose this feat.");
+        // TODO: add 5th level feats (and in the other ancestry mods, too!)
     }
 
     static IEnumerable<Feat> GetHeritages()
@@ -321,7 +336,8 @@ public static class TenguAncestryLoader
                     }
                 });
             });
-        // TODO: maybe add more to this feat later
+        // TODO: maybe add more to this heritage later to replace the missing concealment benefit
+        // maybe a reaction or triggered free action that lets you ignore concealment once per fight or something
         yield return new HeritageSelectionFeat(
             ModManager.RegisterFeatName("Stormtossed Tengu"),
             "Whether due to a storm god's blessing or hatching from your egg during a squall, you are resistant to storms.",

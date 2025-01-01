@@ -34,11 +34,21 @@
 	    <Copy SourceFiles="$(TargetPath)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Dawnsbury Days\CustomMods" />
 		
         <ItemGroup>
-		    
 			<AssetFiles Include="$(ProjectDir)TenguAssets\*.*"/>
         </ItemGroup>
 	    <Copy SourceFiles="@(AssetFiles)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Dawnsbury Days\CustomMods\TenguAssets"/>
 		
 	    <Message text="Copied to game mod folder." />
     </Target>
+
+	<Target Name="CopyToPublishFolder" AfterTargets="Build" Condition=" '$(Configuration)'=='Release' ">
+		<Copy SourceFiles="$(TargetPath)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Dawnsbury Days\Steam Workshop Uploader\Tengu Mod\CustomMods" />
+
+		<ItemGroup>
+			<AssetFiles Include="$(ProjectDir)TenguAssets\*.*"/>
+		</ItemGroup>
+		<Copy SourceFiles="@(AssetFiles)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Dawnsbury Days\Steam Workshop Uploader\Tengu Mod\CustomMods\TenguAssets"/>
+
+		<Message text="Copied to game mod folder." />
+	</Target>
 </Project>
