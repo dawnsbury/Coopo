@@ -11,16 +11,26 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dawnsbury.Mod.Ancestries.Te
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug v2|Any CPU = Debug v2|Any CPU
 		Debug|Any CPU = Debug|Any CPU
+		Release v2|Any CPU = Release v2|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F2ED1BAD-90A7-464D-B623-28330B65BC80}.Debug v2|Any CPU.ActiveCfg = Debug v2|Any CPU
+		{F2ED1BAD-90A7-464D-B623-28330B65BC80}.Debug v2|Any CPU.Build.0 = Debug v2|Any CPU
 		{F2ED1BAD-90A7-464D-B623-28330B65BC80}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{F2ED1BAD-90A7-464D-B623-28330B65BC80}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F2ED1BAD-90A7-464D-B623-28330B65BC80}.Release v2|Any CPU.ActiveCfg = Release v2|Any CPU
+		{F2ED1BAD-90A7-464D-B623-28330B65BC80}.Release v2|Any CPU.Build.0 = Release v2|Any CPU
 		{F2ED1BAD-90A7-464D-B623-28330B65BC80}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F2ED1BAD-90A7-464D-B623-28330B65BC80}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8F65C54A-545C-4FCB-8D95-AF2E6E42D7A1}.Debug v2|Any CPU.ActiveCfg = Debug v2|Any CPU
+		{8F65C54A-545C-4FCB-8D95-AF2E6E42D7A1}.Debug v2|Any CPU.Build.0 = Debug v2|Any CPU
 		{8F65C54A-545C-4FCB-8D95-AF2E6E42D7A1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{8F65C54A-545C-4FCB-8D95-AF2E6E42D7A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8F65C54A-545C-4FCB-8D95-AF2E6E42D7A1}.Release v2|Any CPU.ActiveCfg = Release v2|Any CPU
+		{8F65C54A-545C-4FCB-8D95-AF2E6E42D7A1}.Release v2|Any CPU.Build.0 = Release v2|Any CPU
 		{8F65C54A-545C-4FCB-8D95-AF2E6E42D7A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8F65C54A-545C-4FCB-8D95-AF2E6E42D7A1}.Release|Any CPU.Build.0 = Release|Any CPU
 		{938D59C3-BFFA-4C92-9031-C92BC1246BF5}.Debug v2|Any CPU.ActiveCfg = Debug v2|Any CPU

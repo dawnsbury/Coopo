@@ -23,7 +23,14 @@ public static class TanukiAncestryLoader
     [DawnsburyDaysModMainMethod]
     public static void LoadMod()
     {
+#if DEBUG || DEBUG_V2
         //Debugger.Launch();
+#endif
+#if DAWNSBURY_V2
+        ModManager.AssertV2();
+#else
+        ModManager.AssertV3();
+#endif
 
         Feat TanukiAncestry = new AncestrySelectionFeat(
             ModManager.RegisterFeatName("Tanuki"),
@@ -139,9 +146,11 @@ public static class TanukiAncestryLoader
                 {
                     BonusToDefenses = (QEffect effect, CombatAction? action, Defense defense) =>
                     {
+                        // TODO: this should only work on saving throws
                         if (action != null && action.HasTrait(Trait.Emotion)) return new Bonus(1, BonusType.Circumstance, "Even-tempered");
                         else return null;
                     },
+                    // TODO: use non-obsolete v3 version of this event
                     AdjustSavingThrowResult = (QEffect effect, CombatAction action, CheckResult result) =>
                     {
                         if (!action.HasTrait(Trait.Emotion)) return result;

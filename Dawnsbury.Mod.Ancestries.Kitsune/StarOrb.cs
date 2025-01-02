@@ -31,6 +31,7 @@ namespace Dawnsbury.Mods.Ancestries.Kitsune
                 Target.Self()).WithEffectOnSelf(async (CombatAction self, Creature cr) =>
                 {
                     int diceCount = Math.Max(1, cr.MaximumSpellRank);
+                    // TODO: use HealAsync instead
                     cr.Heal(DiceFormula.FromText(diceCount + "d8", "dice formula source, where does this show up?"), self);
                     cr.PersistentUsedUpResources.UsedUpActions.Add("StarOrb");
                     QEffect? starOrbEffect = cr.FindQEffect(StarOrbQEffectId);
@@ -60,29 +61,5 @@ namespace Dawnsbury.Mods.Ancestries.Kitsune
                 }).WithActionCost(1).WithSoundEffect(SfxName.MinorHealing);
             return action;
         }
-
-        //static public ItemName StarOrbItemName = ModManager.RegisterNewItemIntoTheShop("starOrb", (ItemName name) =>
-        //{
-        //    return new Item(name, IllustrationName.Rock, "Star Orb", 1, 0, [Trait.DoNotAddToShop, KitsuneAncestryLoader.KitsuneTrait]).WithDescription("{i}This unassuming stone radiates magical power.{/i}\n\nOnce per day, you can activate this star orb in one of two ways:\n\n{b}Activate - Restorative Orb{/b} {icon:Action}; You recover 1d8 hit points times half your level (minimum 1d8)\n\n{b}Activate - Orb Focus{/b} {icon:Action}; You restore 1 focus point to your focus pool, up to your usual maximum.")
-        //    .WithPermanentQEffectWhenWorn((QEffect effect, Item item) =>
-        //    {
-        //        effect.ProvideActionIntoPossibilitySection = (QEffect self, PossibilitySection section) =>
-        //        {
-        //            if (!(section.PossibilitySectionId == PossibilitySectionId.ItemActions)) return null;
-        //            // wanna continue from here and use SubmenuPossibility to expand a menu. then you can have two options in there
-        //            else return new SubmenuPossibility(IllustrationName.Rock, "Star Orb Outer")
-        //            {
-        //                Subsections = [
-        //                    new PossibilitySection("Star Orb Inner") {
-        //                            Possibilities = [
-        //                                new ActionPossibility(RestorativeOrb(self.Owner)),
-        //                                new ActionPossibility(CombatAction.CreateSimple(self.Owner, "Orb Focus"))
-        //                                ]
-        //                        }
-        //                    ]
-        //            };
-        //        };
-        //    });
-        //});
     }
 }
