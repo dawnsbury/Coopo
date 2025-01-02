@@ -34,7 +34,14 @@ public static class KitsuneAncestryLoader
     [DawnsburyDaysModMainMethod]
     public static void LoadMod()
     {
-        //Debugger.Launch();
+#if DEBUG || DEBUG_V2
+        Debugger.Launch();
+#endif
+#if DAWNSBURY_V2
+        ModManager.AssertV2();
+#else
+        ModManager.AssertV3();
+#endif
 
         Feat KitsuneAncestry = new AncestrySelectionFeat(
             ModManager.RegisterFeatName("Kitsune"),
@@ -115,7 +122,7 @@ public static class KitsuneAncestryLoader
                 [KitsuneTrait],
                 null).WithIllustration(spell.Illustration).WithRulesBlockForSpell(spellId).WithOnCreature(delegate (Creature cr)
                 {
-                    cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, KitsuneTrait, Ability.Charisma, Trait.Divine).WithSpells([spellId], 0);
+                    cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, KitsuneTrait, Ability.Charisma, Trait.Divine).WithSpells([spellId], cr.MaximumSpellRank);
                 });
         }
         yield return new TrueFeat(
@@ -130,7 +137,7 @@ public static class KitsuneAncestryLoader
                 ]
             ).WithOnSheet((sheet) =>
             {
-                sheet.Proficiencies.Set(Trait.Spell, Proficiency.Trained);
+                sheet.SetProficiency(Trait.Spell, Proficiency.Trained);
             });
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Star Orb"),
@@ -216,6 +223,7 @@ public static class KitsuneAncestryLoader
                         you.Occupies.Overhead("Celestial Privilege", Color.Gold, $"{you.Name} invokes their Celestial Privilege against {action.Name}, gaining a +1 bonus against divine effects.");
                         cr.AddQEffect(new QEffect("Celestial Privilege", "You have a +1 circumstance bonus to saving throws against divine effects until the start of your next turn.")
                         {
+                            // TODO: this should only affect saving throws, not all defenses
                             BonusToDefenses = (QEffect self, CombatAction? action, Defense defense) => action?.HasTrait(Trait.Divine) == true ? new Bonus(1, BonusType.Circumstance, "Celestial Privilege") : null,
                             ExpiresAt = ExpirationCondition.ExpiresAtStartOfYourTurn,
                             Illustration = IllustrationName.Sanctuary
@@ -255,7 +263,7 @@ public static class KitsuneAncestryLoader
             "You gain the {b}Kitsune Spell Familiarity{/b} ancestry feat."
             ).WithOnSheet((CalculatedCharacterSheetValues sheet) =>
             {
-                sheet.AddSelectionOptionRightNow(new SingleFeatSelectionOption("emptySkySpellSelection", "Heritage Spell Choice", 1, (Feat feat) => feat.FeatName == KitsuneSpellFamiliarityFeatName));
+                sheet.AddSelectionOptionRightNow(new SingleFeatSelectionOption("emptySkySpellSelection", "Heritage Spell Choice", 0, (Feat feat) => feat.FeatName == KitsuneSpellFamiliarityFeatName));
             });
     }
 }
