@@ -1,5 +1,4 @@
-﻿using Dawnsbury.Core;
-using Dawnsbury.Core.CombatActions;
+﻿using Dawnsbury.Core.CombatActions;
 using Dawnsbury.Core.Creatures;
 using Dawnsbury.Core.Mechanics;
 using Dawnsbury.Core.Mechanics.Enumerations;
@@ -27,6 +26,8 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
 
         public static void RegisterItems()
         {
+            // can't be bothered implementing two-hand in v2; just remove it in v2
+#if !DAWNSBURY_V2
             ModManager.RegisterNewItemIntoTheShop("katana", (ItemName name) =>
             {
                 return new Item(name, new ModdedIllustration("TenguAssets/katana.png"), "katana", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.DeadlyD8, TwoHandD10, Trait.VersatileP])
@@ -41,6 +42,22 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
                     WeaponProperties = new WeaponProperties("1d6", DamageKind.Bludgeoning)
                 }.WithMainTrait(Khakkara).ImplementTwoHand(6, 10);
             });
+#else
+            ModManager.RegisterNewItemIntoTheShop("katana", (ItemName name) =>
+            {
+                return new Item(name, new ModdedIllustration("TenguAssets/katana.png"), "katana", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.DeadlyD8, Trait.VersatileP])
+                {
+                    WeaponProperties = new WeaponProperties("1d6", DamageKind.Slashing)
+                }.WithMainTrait(Katana);
+            });
+            ModManager.RegisterNewItemIntoTheShop("khakkara", (ItemName name) =>
+            {
+                return new Item(name, new ModdedIllustration("TenguAssets/khakkara.png"), "khakkara", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Club, /*Trait.Monk,*/ Trait.VersatileP])
+                {
+                    WeaponProperties = new WeaponProperties("1d6", DamageKind.Bludgeoning)
+                }.WithMainTrait(Khakkara);
+            });
+#endif
             ModManager.RegisterNewItemIntoTheShop("temple sword", (ItemName name) =>
             {
                 return new Item(name, new ModdedIllustration("TenguAssets/templeSword.png"), "temple sword", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, /*Trait.Monk,*/ Trait.Trip])
@@ -63,7 +80,7 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
                 }.WithMainTrait(TenguGaleBlade);
             });
         }
-
+#if !DAWNSBURY_V2
         // TODO: add the Dual-Handed Assault feat, which gives actual purpose to Two-Hand weapons
         public static Trait TwoHandD10 = ModManager.RegisterTrait("Two-Hand 1d10",
             new TraitProperties("Two-Hand 1d10", true,
@@ -123,5 +140,6 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
                     item.Traits.Remove(Trait.TwoHanded);
                 }).WithActionCost(0).WithShortDescription("Wield your weapon one-handed, at the expense of reduced damage.");
         }
+#endif
     }
 }

@@ -21,10 +21,10 @@ using Dawnsbury.Auxiliary;
 using Dawnsbury.Audio;
 using Microsoft.Xna.Framework;
 using Dawnsbury.Core.CharacterBuilder.Selections.Options;
+using Dawnsbury.Core.Creatures.Parts;
 
 namespace Dawnsbury.Mods.Ancestries.Tengu;
 
-// TODO: figure out Conditional Compilation Symbols and get a V2 version up and running
 // TODO: port some of the nice QoL stuff to the other projects. That is:
 // * the copying stuff in the project file
 // * the preprocessor directive stuff and v2/v3 stuff, when thats in there
@@ -36,9 +36,16 @@ public static class TenguAncestryLoader
     [DawnsburyDaysModMainMethod]
     public static void LoadMod()
     {
-#if DEBUG
+        // enable the debugger in debug mode, and assert that the right version of the game's DLL is being built against
+#if DEBUG || DEBUG_V2
         Debugger.Launch();
 #endif
+#if DAWNSBURY_V2
+        ModManager.AssertV2();
+#else
+        ModManager.AssertV3();
+#endif
+
         Feat TenguAncestry = new AncestrySelectionFeat(
             ModManager.RegisterFeatName("Tengu"),
             description: "Tengus are gregarious and resourceful avian humanoids who collect knowledge and treasures alike. They are natural survivalists and conversationalists, equally at home living off the wilderness and finding a niche in dense cities. Tengu are known to accumulate knowledge, tools, and companions, adding them to their collection as they travel.\n\n{b}Sharp Beak{/b} With your sharp beak, you are never without a weapon. You have a beak unarmed attack that deals 1d6 piercing damage. Your beak is in the brawling weapon group and has the finesse and unarmed traits.",
@@ -54,7 +61,7 @@ public static class TenguAncestryLoader
             {
                 cr.AddQEffect(new QEffect()
                 {
-                    AdditionalUnarmedStrike = new Item(IllustrationName.Beak, "beak", [Trait.Finesse, Trait.Weapon, Trait.Melee, Trait.Unarmed, Trait.Brawling])
+                    AdditionalUnarmedStrike = new Item(new ModdedIllustration("TenguAssets/beak.png"), "beak", [Trait.Finesse, Trait.Weapon, Trait.Melee, Trait.Unarmed, Trait.Brawling])
                     .WithWeaponProperties(new WeaponProperties("1d6", DamageKind.Piercing))
                 });
             });
@@ -102,7 +109,12 @@ public static class TenguAncestryLoader
                 {
                     ProvideActionIntoPossibilitySection = (QEffect self, PossibilitySection section) =>
                     {
-                        if (section.PossibilitySectionId == PossibilitySectionId.Movement)
+#if DAWNSBURY_V2
+                        PossibilitySectionId location = PossibilitySectionId.OtherManeuvers;
+#else
+                        PossibilitySectionId location = PossibilitySectionId.Movement;
+#endif
+                        if (section.PossibilitySectionId == location)
                         {
                             return new ActionPossibility(OneToedHop(cr));
                         }
@@ -130,6 +142,8 @@ public static class TenguAncestryLoader
                     }
                 });
             });
+        // Cannot be implemented in v2; RerollActiveRoll isn't present
+#if !DAWNSBURY_V2
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Squawk!", "Squawk! {icon:Reaction}"),
             1,
@@ -154,6 +168,7 @@ public static class TenguAncestryLoader
                     }
                 });
             });
+#endif
         Spell electricArc = AllSpells.CreateModernSpellTemplate(SpellId.ElectricArc, TenguTrait);
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Storm's Lash"),
@@ -192,17 +207,23 @@ public static class TenguAncestryLoader
             }).WithOnCreature((Creature cr) =>
             {
                 // grant crit spec with listed weapons at level 5
+#if !DAWNSBURY_V2
                 if (cr.Level < 5) return;
                 cr.AddQEffect(new QEffect()
                 {
                     YouHaveCriticalSpecialization = (QEffect self, Item weapon, CombatAction _, Creature _) => familiarWeapons.Any(trait => weapon.HasTrait(trait))
                 });
+#endif
             });
         foreach (Item item in Core.Mechanics.Treasure.Items.ShopItems)
         {
             if (!item.HasTrait(Trait.Sword)) continue;
             if (item.MainTrait == Trait.None) continue;
+#if DAWNSBURY_V2
+            if (item.ItemModifications.Count != 0) continue;
+#else
             if (item.Runes.Count != 0) continue;
+#endif
             if (familiarWeapons.Where(weaponTrait => item.HasTrait(weaponTrait)).Any()) continue; // if this weapon is anything already covered by the base feat, don't list it
             if (item.HasTrait(Trait.Simple)) continue; // this feat doesn't achieve anything for simple weapons
             yield return new Feat(
@@ -217,11 +238,13 @@ public static class TenguAncestryLoader
                 }).WithOnCreature((Creature cr) =>
                 {
                     // grant crit spec with chosen weapon at level 5
+#if !DAWNSBURY_V2
                     if (cr.Level < 5) return;
                     cr.AddQEffect(new QEffect()
                     {
                         YouHaveCriticalSpecialization = (QEffect self, Item weapon, CombatAction _, Creature _) => weapon.HasTrait(item.MainTrait)
                     });
+#endif
                 });
         }
         // end of Tengu Weapon Familiarity
@@ -273,6 +296,15 @@ public static class TenguAncestryLoader
             {
                 cr.AddQEffect(new QEffect("Jinxed Tengu", "When saving against curse effects, your successes are upgraded to critical successes. When you gain the doomed condition, make a DC17 flat check to reduce the gained value by 1.")
                 {
+#if DAWNSBURY_V2
+                    AdjustSavingThrowResult = (QEffect self, CombatAction action, CheckResult result) =>
+                    {
+                        if (action.HasTrait(Trait.Curse) && action.SavingThrow != null && action.SavingThrow.Defense.IsSavingThrow() && result == CheckResult.Success)
+                            return CheckResult.CriticalSuccess;
+                        else return result;
+                    }
+                    // Doomed effect only exists in v3, and AdjustSavingThrowCheckResult is not in v3
+#else
                     AdjustSavingThrowCheckResult = (QEffect self, Defense defense, CombatAction action, CheckResult result) =>
                     {
                         if (action.HasTrait(Trait.Curse) && defense.IsSavingThrow() && result == CheckResult.Success)
@@ -302,6 +334,7 @@ public static class TenguAncestryLoader
                             return applied;
                         }
                     }
+#endif
                 });
             });
         Spell disruptUndead = AllSpells.CreateModernSpellTemplate(SpellId.DisruptUndead, TenguTrait);
@@ -328,12 +361,21 @@ public static class TenguAncestryLoader
             {
                 cr.AddQEffect(new QEffect("Skyborn Tengu", "You have a +1 bonus to saves against air effects, and successful saves become critical successes.")
                 {
+#if DAWNSBURY_V2
+                    AdjustSavingThrowResult = (QEffect self, CombatAction action, CheckResult result) =>
+                    {
+                        if (action.HasTrait(Trait.Air) && action.SavingThrow != null && action.SavingThrow.Defense.IsSavingThrow() && result == CheckResult.Success)
+                            return CheckResult.CriticalSuccess;
+                        else return result;
+                    },
+#else
                     AdjustSavingThrowCheckResult = (QEffect self, Defense defense, CombatAction action, CheckResult result) =>
                     {
                         if (action.HasTrait(Trait.Air) && defense.IsSavingThrow() && result == CheckResult.Success)
                             return CheckResult.CriticalSuccess;
                         else return result;
                     },
+#endif
                     BonusToDefenses = (QEffect self, CombatAction? action, Defense defense) =>
                     {
                         if (!defense.IsSavingThrow()) return null;
