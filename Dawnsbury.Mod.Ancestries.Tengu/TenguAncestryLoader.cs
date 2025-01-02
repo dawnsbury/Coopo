@@ -24,6 +24,11 @@ using Dawnsbury.Core.CharacterBuilder.Selections.Options;
 
 namespace Dawnsbury.Mods.Ancestries.Tengu;
 
+// TODO: figure out Conditional Compilation Symbols and get a V2 version up and running
+// TODO: port some of the nice QoL stuff to the other projects. That is:
+// * the copying stuff in the project file
+// * the preprocessor directive stuff and v2/v3 stuff, when thats in there
+
 public static class TenguAncestryLoader
 {
     public static readonly Trait TenguTrait = ModManager.RegisterTrait("Tengu", new TraitProperties("Tengu", true) { IsAncestryTrait = true });
@@ -31,8 +36,9 @@ public static class TenguAncestryLoader
     [DawnsburyDaysModMainMethod]
     public static void LoadMod()
     {
+#if DEBUG
         Debugger.Launch();
-
+#endif
         Feat TenguAncestry = new AncestrySelectionFeat(
             ModManager.RegisterFeatName("Tengu"),
             description: "Tengus are gregarious and resourceful avian humanoids who collect knowledge and treasures alike. They are natural survivalists and conversationalists, equally at home living off the wilderness and finding a niche in dense cities. Tengu are known to accumulate knowledge, tools, and companions, adding them to their collection as they travel.\n\n{b}Sharp Beak{/b} With your sharp beak, you are never without a weapon. You have a beak unarmed attack that deals 1d6 piercing damage. Your beak is in the brawling weapon group and has the finesse and unarmed traits.",
