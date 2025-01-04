@@ -45,6 +45,11 @@
 	
     <Target Name="CopyToGameModsFolder" AfterTargets="Build">
 	    <Copy SourceFiles="$(TargetPath)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Dawnsbury Days\CustomMods" />
+
+		<ItemGroup>
+			<AssetFiles Include="$(ProjectDir)BattleHarbingerAssets\*.*" />
+		</ItemGroup>
+		<Copy SourceFiles="@(AssetFiles)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Dawnsbury Days\CustomMods\BattleHarbingerAssets" />
 		
 	    <Message text="Copied to game mod folder." />
     </Target>

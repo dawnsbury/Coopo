@@ -1,6 +1,8 @@
 ﻿using Dawnsbury.Core.CharacterBuilder;
 using Dawnsbury.Core.CharacterBuilder.Feats;
+using Dawnsbury.Core.CharacterBuilder.FeatsDb.Spellbook;
 using Dawnsbury.Core.CharacterBuilder.Selections.Options;
+using Dawnsbury.Core.CharacterBuilder.Spellcasting;
 using Dawnsbury.Core.CharacterBuilder.Spellcasting.Slots;
 using Dawnsbury.Core.CombatActions;
 using Dawnsbury.Core.Creatures;
@@ -15,11 +17,11 @@ namespace Dawnsbury.Mods.BattleHarbinger;
 
 public static class BattleHarbingerLoader
 {
-    static Trait BattleHarbingerTrait = ModManager.RegisterTrait("Battle Harbinger", new TraitProperties("Battle Harbinger", false));
+    public static readonly Trait BattleHarbingerTrait = ModManager.RegisterTrait("Battle Harbinger", new TraitProperties("Battle Harbinger", false));
 
-    static FeatName BattleHarbingerDoctrineName = ModManager.RegisterFeatName("Battle Harbinger");
+    static readonly FeatName BattleHarbingerDoctrineName = ModManager.RegisterFeatName("Battle Harbinger");
 
-    static FeatName BattleHarbingerDedicationName = ModManager.RegisterFeatName("Battle Harbinger Dedication");
+    static readonly FeatName BattleHarbingerDedicationName = ModManager.RegisterFeatName("Battle Harbinger Dedication");
 
     [DawnsburyDaysModMainMethod]
     public static void LoadMod()
@@ -35,7 +37,18 @@ public static class BattleHarbingerLoader
 #endif
 
         ModManager.AddFeat(BattleHarbingerDoctrine());
-        ModManager.AddFeat(BattleHarbingerDedication());
+
+        AddFeats(GetClassFeats());
+
+        ModManager.RegisterNewSpell("Benediction", 1, (SpellId spellId, Creature? caster, int level, bool inCombat, SpellInformation spellInfo) =>
+        {
+            return ModSpells.Benediction(level);
+        });
+
+        ModManager.RegisterNewSpell("Malediction", 1, (SpellId spellId, Creature? caster, int level, bool inCombat, SpellInformation spellInfo) =>
+        {
+            return ModSpells.Malediction(level);
+        });
     }
 
     static void AddFeats(IEnumerable<Feat> feats)
@@ -46,24 +59,29 @@ public static class BattleHarbingerLoader
         }
     }
 
-    private static Feat BattleHarbingerDedication()
+    private static IEnumerable<Feat> GetClassFeats()
     {
-        return new Feat(
+        // Battle Harbinger Dedication
+        yield return new TrueFeat(
             BattleHarbingerDedicationName,
+            2,
             "You have trained extensively in combat, battlefield tactics, and stamina, focusing on being an exceptional warrior for your faith in exchange for less time studying the traditional spells and scriptures.",
             "You gain the {i}Toughness{/i} general feat. If you already have this feat, you gain another general feat of your choice.",
-            [BattleHarbingerTrait],
-            null).WithPrerequisite(sheet => sheet.HasFeat(BattleHarbingerDoctrineName), "This feat is only available to Battle Harbingers.")
+            [BattleHarbingerTrait]
+            ).WithPrerequisite(sheet => sheet.HasFeat(BattleHarbingerDoctrineName), "This feat is only available to Battle Harbingers.")
             .WithOnSheet(sheet =>
             {
                 if (!sheet.HasFeat(FeatName.Toughness))
                 {
                     sheet.GrantFeat(FeatName.Toughness);
-                } else
+                }
+                else
                 {
                     sheet.AddSelectionOptionRightNow(new SingleFeatSelectionOption("BHDedicationGeneralFeat", "Battle Harbinger Dedication - General Feat", 2, feat => feat.HasTrait(Trait.General)));
                 }
             });
+        // Aura Enhancement
+
     }
 
     private static Feat BattleHarbingerDoctrine()
