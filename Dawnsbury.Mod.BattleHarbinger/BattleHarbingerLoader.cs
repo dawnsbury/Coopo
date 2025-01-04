@@ -40,15 +40,7 @@ public static class BattleHarbingerLoader
 
         AddFeats(GetClassFeats());
 
-        ModManager.RegisterNewSpell("Benediction", 1, (SpellId spellId, Creature? caster, int level, bool inCombat, SpellInformation spellInfo) =>
-        {
-            return ModSpells.Benediction(level);
-        });
-
-        ModManager.RegisterNewSpell("Malediction", 1, (SpellId spellId, Creature? caster, int level, bool inCombat, SpellInformation spellInfo) =>
-        {
-            return ModSpells.Malediction(level);
-        });
+        ModSpells.RegisterSpells();
     }
 
     static void AddFeats(IEnumerable<Feat> feats)
