@@ -1,27 +1,23 @@
-﻿using Dawnsbury.Core.CharacterBuilder;
+﻿using Dawnsbury.Core;
+using Dawnsbury.Core.CharacterBuilder;
 using Dawnsbury.Core.CharacterBuilder.Feats;
-using Dawnsbury.Core.CharacterBuilder.FeatsDb.Spellbook;
 using Dawnsbury.Core.CharacterBuilder.Selections.Options;
 using Dawnsbury.Core.CharacterBuilder.Spellcasting;
-using Dawnsbury.Core.CharacterBuilder.Spellcasting.Slots;
 using Dawnsbury.Core.CombatActions;
+using Dawnsbury.Core.Coroutines.Options;
 using Dawnsbury.Core.Creatures;
 using Dawnsbury.Core.Mechanics;
 using Dawnsbury.Core.Mechanics.Enumerations;
 using Dawnsbury.Core.Mechanics.Treasure;
-using Dawnsbury.Display.Text;
+using Dawnsbury.Core.Possibilities;
 using Dawnsbury.Modding;
 using System.Diagnostics;
+using Dawnsbury.Mods.BattleHarbinger.RegisteredValues;
 
 namespace Dawnsbury.Mods.BattleHarbinger;
 
 public static class BattleHarbingerLoader
 {
-    public static readonly Trait BattleHarbingerTrait = ModManager.RegisterTrait("Battle Harbinger", new TraitProperties("Battle Harbinger", false));
-
-    static readonly FeatName BattleHarbingerDoctrineName = ModManager.RegisterFeatName("Battle Harbinger");
-
-    static readonly FeatName BattleHarbingerDedicationName = ModManager.RegisterFeatName("Battle Harbinger Dedication");
 
     [DawnsburyDaysModMainMethod]
     public static void LoadMod()
@@ -51,16 +47,21 @@ public static class BattleHarbingerLoader
         }
     }
 
+    // extension method for Creature that allows getting just the class DC (unlike ClassOrSpellDC)
+    public static int ClassDC(this Creature self)
+    {
+        return ((self.PersistentCharacterSheet?.Class != null) ? (self.Proficiencies.Get(self.PersistentCharacterSheet.Class.ClassTrait).ToNumber(self.Level) + self.Abilities.Get(self.Abilities.KeyAbility) + 10) : (12 + self.Level));
+    }
     private static IEnumerable<Feat> GetClassFeats()
     {
         // Battle Harbinger Dedication
         yield return new TrueFeat(
-            BattleHarbingerDedicationName,
-            2,
-            "You have trained extensively in combat, battlefield tactics, and stamina, focusing on being an exceptional warrior for your faith in exchange for less time studying the traditional spells and scriptures.",
+        ModFeatName.BattleHarbingerDedication,
+        2,
+        "You have trained extensively in combat, battlefield tactics, and stamina, focusing on being an exceptional warrior for your faith in exchange for less time studying the traditional spells and scriptures.",
             "You gain the {i}Toughness{/i} general feat. If you already have this feat, you gain another general feat of your choice.",
-            [BattleHarbingerTrait]
-            ).WithPrerequisite(sheet => sheet.HasFeat(BattleHarbingerDoctrineName), "This feat is only available to Battle Harbingers.")
+            [ModTrait.BattleHarbinger, Trait.Cleric]
+            ).WithPrerequisite(sheet => sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is only available to Battle Harbingers.")
             .WithOnSheet(sheet =>
             {
                 if (!sheet.HasFeat(FeatName.Toughness))
@@ -73,13 +74,59 @@ public static class BattleHarbingerLoader
                 }
             });
         // Aura Enhancement
-
+        // feat has no built-in effect, and is just a marker for the code that adds the battle font slots to add extra allowed spells
+        yield return new TrueFeat(
+            ModFeatName.AuraEnhancement,
+            4,
+            "You've enhanced your training with your battle magic, allowing you access to a more potent divine font.",
+            "Add {i}benediction{/i} and {i}malediction{/i} to the spells you can prepare with your additional slots from your divine font. These spells are also battle auras.",
+            [ModTrait.BattleHarbinger, Trait.Cleric]
+            ).WithPrerequisite(sheet => sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is only available to Battle Harbingers.");
+        // Tandem Onslaught
+        yield return new TrueFeat(
+            ModManager.RegisterFeatName("Tandem Onslaught"),
+            4,
+            "You have trained your body and mind to work in tandem, and you can combine your combat and spellcasting prowess to better support yourself in battle.",
+            "The first time each round that you successfully hit and deal damage to an enemy creature with a Strike using a weapon or unarmed attack, you can automatically Sustain a single battle aura that you currently have active, applying any additional effects that come with Sustaining the spell.",
+            [ModTrait.BattleHarbinger, Trait.Cleric]
+            ).WithPrerequisite(sheet => sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is only available to Battle Harbingers.")
+            .WithOnCreature((Creature cr) =>
+            {
+                cr.AddQEffect(new QEffect()
+                {
+                    AfterYouDealDamage = async (Creature attacker, CombatAction action, Creature target) =>
+                    {
+                        if (attacker.HasEffect(ModQEffectId.TandemOnslaughtOncePerTurn)) return;
+                        if (!action.HasTrait(Trait.Strike)) return;
+                        if (!(action.HasTrait(Trait.Weapon) || action.HasTrait(Trait.Unarmed))) return;
+                        IEnumerable<CombatAction> battleAuraSustains = attacker.Possibilities.CreateActions(false)
+                            .Where(iAction => iAction.CanBeginToUse(attacker).CanBeUsed || iAction.CanBeginToUse(attacker) == Usability.CommonReasons.NoActions)
+                            .Select(iAction => iAction.Action)
+                            .Where(action => action.HasTrait(Trait.SustainASpell) && action.HasTrait(ModTrait.BattleAura));
+                        if (battleAuraSustains.Any())
+                        {
+                            ChoiceButtonOption choice = await attacker.AskForChoiceAmongButtons(IllustrationName.None, "You successfully damaged an enemy. Which battle aura would you like to Sustain with Tandem Onslaught?", battleAuraSustains.Select(action => action.Name).Append("None").ToArray());
+                            if (choice.Text == "None") return;
+                            CombatAction? chosen = battleAuraSustains.FirstOrDefault(action => action.Name == choice.Text);
+                            if (chosen == null) return;
+                            // execute the chosen sustain action for free
+                            await chosen.WithActionCost(0).AllExecute();
+                            // Cannot happen again until start of next turn
+                            attacker.AddQEffect(new QEffect()
+                            {
+                                Id = ModQEffectId.TandemOnslaughtOncePerTurn,
+                                ExpiresAt = ExpirationCondition.ExpiresAtStartOfYourTurn
+                            });
+                        }
+                    }
+                });
+            });
     }
 
     private static Feat BattleHarbingerDoctrine()
     {
         return new Feat(
-            BattleHarbingerDoctrineName,
+            ModFeatName.BattleHarbingerDoctrine,
             "You've dedicated yourself to the battle creed, a specific doctrine that puts combat prowess first, even at the expense of a cleric's typical spellcasting and restorative abilities.",
             "This doctrine is a {i}class archetype{/i}: You gain Battle Harbinger Dedication instead of your 2nd-level class feat.\n" +
             "{b}Initial Creed (at level 1):{/b} You're trained in light and medium armor. You have expert proficiency in Fortitude saves. You're trained in martial weapons. If your deity's favored weapon is a simple weapon or an unarmed attack, you gain the Deadly Simplicity cleric feat.\n" +
@@ -102,8 +149,9 @@ public static class BattleHarbingerLoader
                     sheet.GrantFeat(FeatName.DeadlySimplicity);
                 }
                 // Dedication Feat (level 2)
+                // Remove 2nd level class feat
                 sheet.SelectionOptions.RemoveAll(option => option.Key == "Root:Class:ClericFeat2");
-                sheet.AddSelectionOption(new SingleFeatSelectionOption("BattleHarbingerDedicationFeatSelection", "Cleric feat (Battle Harbinger)", 2, feat => feat.FeatName == BattleHarbingerDedicationName));
+                sheet.AddSelectionOption(new SingleFeatSelectionOption("BattleHarbingerDedicationFeatSelection", "Cleric feat (Battle Harbinger)", 2, feat => feat.FeatName == ModFeatName.BattleHarbingerDedication));
                 // Lesser Creed (level 5)
                 sheet.AddAtLevel(5, sheet =>
                 {
@@ -133,19 +181,22 @@ public static class BattleHarbingerLoader
                 };
 
                 // Divine Font Modifications
-                // TODO: make the battle auras use class DC instead of spell DC, somehow (or change the subclass to increase spell DC i guess)
-                // maybe a status/untyped bonus to DC that increases it to class DC
                 // Remove divine font selection and feats
                 sheet.SelectionOptions.RemoveAll(option => option.Name == "Divine font");
                 sheet.AllFeats.RemoveAll(feat => feat.HasTrait(Trait.DivineFont));
                 sheet.AtEndOfRecalculation += (CalculatedCharacterSheetValues sheet) =>
                 {
                     // Grant battle font slots
-                    sheet.PreparedSpells[Trait.Cleric].Slots.Add(new BattleFontSpellSlot(sheet.MaximumSpellLevel, "BattleFont:1"));
-                    sheet.PreparedSpells[Trait.Cleric].Slots.Add(new BattleFontSpellSlot(sheet.MaximumSpellLevel, "BattleFont:2"));
-                    sheet.PreparedSpells[Trait.Cleric].Slots.Add(new BattleFontSpellSlot(sheet.MaximumSpellLevel, "BattleFont:3"));
-                    sheet.PreparedSpells[Trait.Cleric].Slots.Add(new BattleFontSpellSlot(sheet.MaximumSpellLevel, "BattleFont:4"));
-                    if (sheet.CurrentLevel >= 5) sheet.PreparedSpells[Trait.Cleric].Slots.Add(new BattleFontSpellSlot(sheet.MaximumSpellLevel, "BattleFont:5"));
+                    int slotCount = sheet.CurrentLevel >= 5 ? 5 : 4;
+                    List<SpellId> extraAuras = [];
+                    if (sheet.HasFeat(ModFeatName.AuraEnhancement))
+                    {
+                        extraAuras = [ModSpellId.Benediction, ModSpellId.Malediction];
+                    }
+                    for (int i = 1; i <= slotCount; i++)
+                    {
+                        sheet.PreparedSpells[Trait.Cleric].Slots.Add(new BattleFontSpellSlot(sheet.MaximumSpellLevel, $"BattleFont:{i}", extraAuras));
+                    }
                 };
             }).WithOnCreature((CalculatedCharacterSheetValues sheet, Creature cr) =>
             {
