@@ -11,7 +11,7 @@ namespace Dawnsbury.Mods.BattleHarbinger.RegisteredValues
     internal class ModTrait
     {
         public static readonly Trait BattleHarbinger = ModManager.RegisterTrait("Battle Harbinger");
-        public static readonly Trait BattleAura = ModManager.RegisterTrait("Battle Aura", new TraitProperties("Battle Aura", false));
+        public static readonly Trait BattleAura = ModManager.RegisterTrait("Battle Aura");
     }
 
     internal class ModFeatName
@@ -19,6 +19,7 @@ namespace Dawnsbury.Mods.BattleHarbinger.RegisteredValues
         public static readonly FeatName BattleHarbingerDoctrine = ModManager.RegisterFeatName("Battle Harbinger");
         public static readonly FeatName BattleHarbingerDedication = ModManager.RegisterFeatName("Battle Harbinger Dedication");
         public static readonly FeatName AuraEnhancement = ModManager.RegisterFeatName("Aura Enhancement");
+        public static readonly FeatName ExigentAura = ModManager.RegisterFeatName("Exigent Aura");
     }
 
     internal class ModQEffectId
@@ -31,7 +32,9 @@ namespace Dawnsbury.Mods.BattleHarbinger.RegisteredValues
     // Spells registered in ModSpells
     internal class ModSpellId
     {
-        static public SpellId Benediction;
-        static public SpellId Malediction;
+        static public SpellId BattleBenediction;
+        static public SpellId BattleMalediction;
+        static public SpellId BattleBless;
+        static public SpellId BattleBane;
     }
 }

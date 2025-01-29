@@ -1,6 +1,7 @@
 ﻿using Dawnsbury.Core.CharacterBuilder.Spellcasting;
 using Dawnsbury.Core.CharacterBuilder;
 using Dawnsbury.Display;
+using Dawnsbury.Mods.BattleHarbinger.RegisteredValues;
 
 namespace Dawnsbury.Mods.BattleHarbinger
 {
@@ -8,7 +9,7 @@ namespace Dawnsbury.Mods.BattleHarbinger
     {
         public override string SlotName => "Battle font";
 
-        public List<SpellId> BattleAuras = [SpellId.Bless, SpellId.Bane];
+        public List<SpellId> BattleAuras = [ModSpellId.BattleBless, ModSpellId.BattleBane];
 
         public BattleFontSpellSlot(int level, string key, List<SpellId> extraBattleAuras) : this(level, key)
         {
@@ -27,7 +28,7 @@ namespace Dawnsbury.Mods.BattleHarbinger
                 return base.DisallowsSpellBecause(preparedSpell, sheet, preparedSpellSlots);
             }
 
-            return "Battle Font slots only allow {i}battle aura{/i} spells such as {i}bless{/i} and {i}bane{/i}.";
+            return "Battle Font slots only allow {i}battle aura{/i} spells such as {i}battle bless{/i} and {i}battle bane{/i}.";
         }
     }
 }
