@@ -17,8 +17,9 @@ using Dawnsbury.Modding;
 using Microsoft.Xna.Framework;
 
 using Dawnsbury.Mods.BattleHarbinger.RegisteredValues;
-
-// TODO: maybe use BonusToSpellSaveDCsForSpecificSpell to increase the character's spell save DC for battle auras to their class DC. would be more clear in-game, especially since it just says "spell save DC" even when you provide a custom number
+#if !DAWNSBURY_V2
+using Dawnsbury.Core.Animations.AuraAnimations;
+#endif
 
 namespace Dawnsbury.Mods.BattleHarbinger
 {
@@ -26,8 +27,8 @@ namespace Dawnsbury.Mods.BattleHarbinger
     {
         static readonly Illustration BenedictionArt = new ModdedIllustration("BattleHarbingerAssets/benediction.png");
         static readonly Illustration MaledictionArt = new ModdedIllustration("BattleHarbingerAssets/malediction.png");
-        static readonly Illustration BenedictionCircleArt = new ModdedIllustration("BattleHarbingerAssets/benedictionCircle.png");
-        static readonly Illustration MaledictionCircleArt = new ModdedIllustration("BattleHarbingerAssets/maledictionCircle.png");
+        static readonly ModdedIllustration BenedictionCircleArt = new ModdedIllustration("BattleHarbingerAssets/benedictionCircle.png");
+        static readonly ModdedIllustration MaledictionCircleArt = new ModdedIllustration("BattleHarbingerAssets/maledictionCircle.png");
 
         public static void RegisterSpells()
         {
@@ -59,7 +60,7 @@ namespace Dawnsbury.Mods.BattleHarbinger
                 [..traits],
                 "Divine protection helps protect your companions.",
                 "For the rest of the encounter, you and your allies gain a +1 status bonus to AC while within a 15-foot-radius emanation around you.\n\nOnce per turn, starting the turn after you cast benediction, you can Sustain the spell to increase the emanation's radius by 10 feet.",
-                Target.Self((Creature cr, AI ai) => ai.BlessBane()),
+                Target.Self(),
                 level,
                 null).WithSoundEffect(SfxName.Bless)
                 .WithEffectOnSelf(async (CombatAction action, Creature cr) =>
@@ -76,7 +77,7 @@ namespace Dawnsbury.Mods.BattleHarbinger
                 [..traits],
                 "You incite distress in the minds of your enemies, making it more difficult for them to defend themselves.",
                 "You create a 10-foot-radius emanation around you. Enemies within it must succeed at a Will save or take a –1 status penalty to AC as long as they are in the area.\n\nAn enemy who failed and then leaves the area and reenters later is automatically affected again. An enemy who enters the area for the first time rolls a Will save as they enter.\n\nOnce per turn, starting the turn after you cast malediction, you can Sustain the spell to increase the emanation's radius by 10 feet and force enemies in the area that weren't yet affected to attempt another saving throw.",
-                Target.Self((Creature cr, AI ai) => ai.BlessBane()),
+                Target.Self(),
                 level,
                 null).WithSoundEffect(SfxName.Fear)
                 .WithEffectOnSelf(async (CombatAction action, Creature cr) =>
@@ -93,7 +94,7 @@ namespace Dawnsbury.Mods.BattleHarbinger
                 [..traits],
                 "Blessings from beyond help your companions strike true.",
                 "For the rest of the encounter, you and your allies gain a +1 status bonus to attack rolls while within a 15-foot-radius emanation around you.\n\nOnce per turn, starting the turn after you cast bless, you can Sustain the spell to increase the emanation's radius by 10 feet.",
-                Target.Self((Creature cr, AI ai) => ai.BlessBane()),
+                Target.Self(),
                 level,
                 null).WithSoundEffect(SfxName.Bless)
                 .WithEffectOnSelf(async (CombatAction action, Creature cr) =>
@@ -110,7 +111,7 @@ namespace Dawnsbury.Mods.BattleHarbinger
                 [..traits],
                 "You fill the minds of your enemies with doubt.",
                 "You create a 10-foot-radius emanation around you. Enemies within it must succeed at a Will save or take a –1 status penalty to attack rolls as long as they are in the area.\n\nAn enemy who failed and then leaves the area and reenters later is automatically affected again. An enemy who enters the area for the first time rolls a Will save as they enter.\n\nOnce per turn, starting the turn after you cast bane, you can Sustain the spell to increase the emanation's radius by 10 feet and force enemies in the area that weren't yet affected to attempt another saving throw.",
-                Target.Self((Creature cr, AI ai) => ai.BlessBane()),
+                Target.Self(),
                 level,
                 null).WithSoundEffect(SfxName.Bless)
                 .WithEffectOnSelf(async (CombatAction action, Creature cr) =>
@@ -121,14 +122,19 @@ namespace Dawnsbury.Mods.BattleHarbinger
 
         private static void BeneMaledictionEffectOnSelf(CombatAction action, Creature caster, Illustration illustration, bool isBenediction, int initialRadius, int sustainExpansion)
         {
-            // TODO: make benediction and malediction magic circles
             // Stops visual studio from crying about nullability
             (int, bool) DeconstructTag(QEffect qEffect)
             {
                 if (qEffect.Tag == null) return (initialRadius, true);
                 else return ((int, bool))qEffect.Tag;
             };
+#if DAWNSBURY_V2
             AuraAnimation auraAnimation = caster.AnimationData.AddAuraAnimation(isBenediction ? IllustrationName.BlessCircle : IllustrationName.BaneCircle, initialRadius);
+            auraAnimation.Color = isBenediction ? Color.Green : Color.MediumPurple;
+#else
+            AuraAnimation auraAnimation = new MagicCircleAuraAnimation(isBenediction ? BenedictionCircleArt : MaledictionCircleArt, Color.White, initialRadius);
+            caster.AnimationData.AddAuraAnimation(auraAnimation);
+#endif
             QEffect casterEffect = new QEffect(isBenediction ? "Benediction" : "Malediction", "[this condition has no description]", ExpirationCondition.Never, caster, IllustrationName.None)
             {
                 WhenExpires = delegate
@@ -137,7 +143,11 @@ namespace Dawnsbury.Mods.BattleHarbinger
                 },
                 // first item is the radius of the aura, second is if it's been sustained this turn
                 Tag = (initialRadius, true),
+#if DAWNSBURY_V2
+                StartOfYourTurn = async delegate (QEffect self, Creature _)
+#else
                 StartOfYourEveryTurn = async delegate (QEffect self, Creature _)
+#endif
                 {
                     self.Tag = (DeconstructTag(self).Item1, false);
                 },
@@ -167,7 +177,6 @@ namespace Dawnsbury.Mods.BattleHarbinger
             };
             if (isBenediction)
             {
-                auraAnimation.Color = Color.Green;
                 casterEffect.StateCheck = (QEffect self) =>
                 {
                     int auraSize = DeconstructTag(self).Item1;
@@ -183,7 +192,6 @@ namespace Dawnsbury.Mods.BattleHarbinger
             }
             else
             {
-                auraAnimation.Color = Color.MediumPurple;
                 casterEffect.StateCheckWithVisibleChanges = async delegate (QEffect self)
                 {
                     int auraSize = DeconstructTag(self).Item1;
@@ -214,7 +222,11 @@ namespace Dawnsbury.Mods.BattleHarbinger
                                         ExpiresAt = ExpirationCondition.Ephemeral
                                     });
                                 // battle aura; use class DC
+#if !DAWNSBURY_V2
                                 CheckResult checkResult = CommonSpellEffects.RollSavingThrow(enemy, action, Defense.Will, self.Owner.ClassDC());
+#else
+                                CheckResult checkResult = CommonSpellEffects.RollSavingThrow(enemy, action, Defense.Will, (Creature? cr) => self.Owner.ClassDC());
+#endif
                                 enemy.AddQEffect(new QEffect(ExpirationCondition.Never)
                                 {
                                     Id = ModQEffectId.RolledAgainstMalediction,
@@ -262,7 +274,11 @@ namespace Dawnsbury.Mods.BattleHarbinger
                     auraAnimation.MoveTo(0f);
                 },
                 Tag = (initialRadius, true),
+#if DAWNSBURY_V2
+                StartOfYourTurn = async delegate (QEffect self, Creature _)
+#else
                 StartOfYourEveryTurn = async delegate (QEffect self, Creature _)
+#endif
                 {
                     self.Tag = (DeconstructTag(self).Item1, false);
                 },
@@ -336,7 +352,11 @@ namespace Dawnsbury.Mods.BattleHarbinger
                                         ExpiresAt = ExpirationCondition.Ephemeral
                                     });
                                 // battle aura; use class DC
+#if !DAWNSBURY_V2
                                 CheckResult checkResult = CommonSpellEffects.RollSavingThrow(enemy, action, Defense.Will, self.Owner.ClassDC());
+#else
+                                CheckResult checkResult = CommonSpellEffects.RollSavingThrow(enemy, action, Defense.Will, (Creature? cr) => self.Owner.ClassDC());
+#endif
                                 enemy.AddQEffect(new QEffect(ExpirationCondition.Never)
                                 {
                                     Id = QEffectId.RolledAgainstBane,

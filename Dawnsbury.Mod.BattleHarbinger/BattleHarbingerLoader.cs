@@ -28,7 +28,7 @@ public static class BattleHarbingerLoader
     {
         // enable the debugger in debug mode, and assert that the right version of the game's DLL is being built against
 #if DEBUG || DEBUG_V2
-        //Debugger.Launch();
+        Debugger.Launch();
 #endif
 #if DAWNSBURY_V2
         ModManager.AssertV2();
@@ -160,7 +160,11 @@ public static class BattleHarbingerLoader
             ModManager.RegisterFeatName("Creed Magic"),
             8,
             "You've expanded your divine capabilities, granting you magic that better supports your combat focus.",
-            "You gain two special 2nd-level creed spell slots, which can be used to prepare {i}resist energy{/i}, {i}see invisibility{/i}, and {i}true strike{/i} as divine spells.",
+            "You gain two special 2nd-level creed spell slots, which can be used to prepare {i}resist energy{/i}" +
+#if !DAWNSBURY_V2
+            ", {i}see invisibility{/i}," +
+#endif
+            " and {i}true strike{/i} as divine spells.",
             [ModTrait.BattleHarbinger, Trait.Cleric]
             ).WithPrerequisite(sheet => sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is only available to Battle Harbingers.")
             .WithOnSheet(sheet =>
@@ -168,7 +172,9 @@ public static class BattleHarbingerLoader
                 sheet.PreparedSpells[Trait.Cleric].Slots.Add(new CreedMagicSpellSlot(2, "CreedMagic:1"));
                 sheet.PreparedSpells[Trait.Cleric].Slots.Add(new CreedMagicSpellSlot(2, "CreedMagic:2"));
                 sheet.ClericAdditionalPreparableSpells.Add(SpellId.ResistEnergy);
+#if !DAWNSBURY_V2
                 sheet.ClericAdditionalPreparableSpells.Add(SpellId.SeeInvisibility);
+#endif
                 sheet.ClericAdditionalPreparableSpells.Add(SpellId.TrueStrike);
             });
         // Harbinger's Armament
@@ -193,7 +199,9 @@ public static class BattleHarbingerLoader
                             enfeebled.RoundsLeft = 1;
                             enfeebled.Source = attacker;
                             enfeebled.CannotExpireThisTurn = true;
+#if !DAWNSBURY_V2
                             enfeebled.CountsAsBeneficialToSource = true;
+#endif
                             target.AddQEffect(enfeebled);
                         }
                     }
@@ -206,9 +214,11 @@ public static class BattleHarbingerLoader
         //AllFeats.All.FirstOrDefault(feat => feat.FeatName == FeatName.AbundantSpellcastingCleric2)?.Prerequisites.Add(
         //    new Prerequisite(sheet => !sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is not available to Battle Harbingers.")
         //    );
+#if !DAWNSBURY_V2
         AllFeats.All.FirstOrDefault(feat => feat.FeatName == FeatName.VersatileFont)?.Prerequisites.Add(
             new Prerequisite(sheet => !sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is not available to Battle Harbingers.")
             );
+#endif
     }
 
     private static Feat BattleHarbingerDoctrine()
@@ -292,6 +302,7 @@ public static class BattleHarbingerLoader
             }).WithOnCreature((CalculatedCharacterSheetValues sheet, Creature cr) =>
             {
                 // grant crit spec with favoured weapon at level 5 and on
+#if !DAWNSBURY_V2
                 if (cr.Level >= 5)
                     cr.AddQEffect(new QEffect()
                     {
@@ -302,6 +313,7 @@ public static class BattleHarbingerLoader
                             else return false;
                         }
                     });
+#endif
             });
     }
 }
