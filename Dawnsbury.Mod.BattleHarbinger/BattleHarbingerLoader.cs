@@ -58,13 +58,13 @@ public static class BattleHarbingerLoader
     }
     private static IEnumerable<Feat> GetClassFeats()
     {
-        // Battle Harbinger Dedication
+        // Harbinger's Resiliency (Battle Harbinger Dedication but optional)
         yield return new TrueFeat(
-        ModFeatName.BattleHarbingerDedication,
+        ModManager.RegisterFeatName("Harbinger's Resiliency"),
         2,
-        "You have trained extensively in combat, battlefield tactics, and stamina, focusing on being an exceptional warrior for your faith in exchange for less time studying the traditional spells and scriptures.",
+        "You have trained extensively in combat, battlefield tactics, and stamina, focusing on being an exceptional warrior for your faith.",
             "You gain the {i}Toughness{/i} general feat. If you already have this feat, you gain another general feat of your choice.",
-            [ModTrait.BattleHarbinger, Trait.Cleric]
+            [ModTrait.BattleHarbinger, Trait.Cleric, Trait.Homebrew]
             ).WithPrerequisite(sheet => sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is only available to Battle Harbingers.")
             .WithOnSheet(sheet =>
             {
@@ -226,9 +226,8 @@ public static class BattleHarbingerLoader
         return new Feat(
             ModFeatName.BattleHarbingerDoctrine,
             "You've dedicated yourself to the battle creed, a specific doctrine that puts combat prowess first, even at the expense of a cleric's typical spellcasting and restorative abilities.",
-            "This doctrine is a {i}class archetype{/i}: You gain Battle Harbinger Dedication instead of your 2nd-level class feat.\n" +
+            "This doctrine is a {i}class archetype{/i}: It modifies your Spellcasting and Divine Font class features, and you gain your doctrine benefits at different levels than normal. \n" +
             "{b}Initial Creed (at level 1):{/b} You're trained in light and medium armor. You have expert proficiency in Fortitude saves. You're trained in martial weapons. If your deity's favored weapon is a simple weapon or an unarmed attack, you gain the Deadly Simplicity cleric feat.\n" +
-            "{b}Battle Harbinger Dedication (at level 2):{/b} You gain the Toughness general feat. If you already have this feat, you gain another general feat of your choice.\n" +
             "{b}Lesser Creed (at level 5):{/b} You gain expert proficiency with your deity's favored weapon, martial weapons, simple weapons, and unarmed attacks. When you critically succeed at an attack roll using your deity's favored weapon, you apply the weapon's {tooltip:criteffect}critical specialization effect{/tooltip}. Your proficiency rank for your class DC increases to expert.\n\n" +
             "In addition, the following class features are modified:\n" +
             "{b}Spellcasting:{/b} Your spellcasting capabilities are more restricted. At 1st level, you can prepare only one 1st-level spell and five cantrips, and at 3rd level, you gain only one 2nd-level spell slot; You gain one more spell slot at 2nd and 4th level as normal. From 5th level onwards, you always have two spell slots of your highest level and two more of your second highest level.\n" +
@@ -246,10 +245,6 @@ public static class BattleHarbingerLoader
                 {
                     sheet.GrantFeat(FeatName.DeadlySimplicity);
                 }
-                // Dedication Feat (level 2)
-                // Remove 2nd level class feat
-                sheet.SelectionOptions.RemoveAll(option => option.Key == "Root:Class:ClericFeat2");
-                sheet.AddSelectionOption(new SingleFeatSelectionOption("BattleHarbingerDedicationFeatSelection", "Cleric feat (Battle Harbinger)", 2, feat => feat.FeatName == ModFeatName.BattleHarbingerDedication));
                 // Lesser Creed (level 5)
                 sheet.AddAtLevel(5, sheet =>
                 {

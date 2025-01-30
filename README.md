@@ -1,6 +1,6 @@
-# Dawnsbury Days Tanuki Ancestry
+# Coopo's Dawnsbury Days Stuff
 
-A mod for Dawnsbury Days which adds some Ancestries that I think are cool (and some related stuff.) Currently adds:
+Some mods for Dawnsbury Days that add things I think are cool, primarily Ancestries. Currently adds:
 
 * Tanuki
 	* Even-tempered Heritage
@@ -34,14 +34,25 @@ A mod for Dawnsbury Days which adds some Ancestries that I think are cool (and s
     * Tengu Weapon Familiarity Feat
     * Uncanny Agility Feat
     * Waxed Feathers Feat
-* Mechanics
+* Mechanics (in the Tengu mod)
     * Two-Hand trait (specifically, Two-Hand d10)
-* Items
+* Items (in the Tengu mod)
     * Katana
     * Wakizashi
     * Khakkara
     * Temple Sword
     * Tengu Gale Blade
+* Battle Harbinger class archetype
+    * All class features up to level 8
+    * All battle aura spells - Bless, Bane, Benediction, and Malediction
+    * Harbinger's Resiliency (Functionally identical to the Dedication in tabletop - see differences)
+    * Aura Enhancement Feat
+    * Tandem Onslaught Feat
+    * Exigent Aura Feat
+    * Harbinger's Protection Feat
+    * Creed Magic Feat
+    * Harbinger's Armament Feat
+
 
 ## Differences from RAW
 
@@ -60,3 +71,7 @@ A mod for Dawnsbury Days which adds some Ancestries that I think are cool (and s
 * Squawk!: Original cannot be used in combat, so it is completely replaced. Once per day, you can use a reaction when you fail a check to Demoralize to reroll the check and take the higher result.
 * Tengu Weapon Familiarity: To change the sword you've practiced with, use the retraining menu.
 * Uncanny Agility: Just grants the Feather Step feat instead of granting it's benefits on specific kinds of terrain. Doesn't grant Steady Balance because Balancing doesn't exist in Dawnsbury Days.
+### Battle Harbinger
+* Battle Harbinger Dedication: Because archetypes are not implemented in Dawnsbury Days, the archetype is chosen as a doctrine. You also don't have to take the dedication instead of your 2nd level class feat - if you still want it, the new feat Harbinger's Resiliency has identical functionality to the dedication.
+* Battle Font: Instead of the benefits of the battle font applying to all instances of bless and bane, you are granted special versions of the spells named "battle bless" and "battle bane" which use class DC and gain the benefits of battle harbinger feats. Only these versions can be prepared in the font slots, and normal versions of these aura spells are unchanged. (This is mostly for implementation reasons, and if you use these versions exclusively then there should be no mechanical difference.)
+* Harbinger's Armament: This feat applies the effects of the rune to all melee Strikes instead of to a specific weapon, in the same way as the Dawnsbury version of Champion's blade ally. You also get no choice of rune - your weapon always acts as if it is disrupting.
