@@ -55,5 +55,27 @@
 		
 	    <Message text="Copied to game mod folder." />
     </Target>
+
+	<Target Name="CopyToPublishFolderV3" AfterTargets="Build" Condition=" '$(Configuration)'=='Release' ">
+		<Copy SourceFiles="$(TargetPath)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Dawnsbury Days\Steam Workshop Uploader\Battle Harbinger Mod\CustomModsV3" />
+
+		<ItemGroup>
+			<AssetFiles Include="$(ProjectDir)BattleHarbingerAssets\*.*" />
+		</ItemGroup>
+		<Copy SourceFiles="@(AssetFiles)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Dawnsbury Days\Steam Workshop Uploader\Battle Harbinger Mod\CustomModsV3\BattleHarbingerAssets" />
+
+		<Message text="Copied to mod publishing folder." />
+	</Target>
+
+	<Target Name="CopyToPublishFolderV2" AfterTargets="Build" Condition=" '$(Configuration)'=='Release v2' ">
+		<Copy SourceFiles="$(TargetPath)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Dawnsbury Days\Steam Workshop Uploader\Battle Harbinger Mod\CustomMods" />
+
+		<ItemGroup>
+			<AssetFiles Include="$(ProjectDir)BattleHarbingerAssets\*.*" />
+		</ItemGroup>
+		<Copy SourceFiles="@(AssetFiles)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Dawnsbury Days\Steam Workshop Uploader\Battle Harbinger Mod\CustomMods\BattleHarbingerAssets" />
+
+		<Message text="Copied to mod publishing folder (v2 version)." />
+	</Target>
 	
 </Project>

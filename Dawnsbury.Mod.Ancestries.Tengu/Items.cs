@@ -8,8 +8,6 @@ using Dawnsbury.Core.Possibilities;
 using Dawnsbury.Display.Illustrations;
 using Dawnsbury.Modding;
 
-// TODO: i guess you could add the tengu thunder sling, but is there really any point?
-
 namespace Dawnsbury.Mods.Ancestries.Tengu
 {
     internal static class Items
