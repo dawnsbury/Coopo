@@ -37,11 +37,7 @@ public static class KitsuneAncestryLoader
 #if DEBUG || DEBUG_V2
         Debugger.Launch();
 #endif
-#if DAWNSBURY_V2
         ModManager.AssertV2();
-#else
-        ModManager.AssertV3();
-#endif
 
         Feat KitsuneAncestry = new AncestrySelectionFeat(
             ModManager.RegisterFeatName("Kitsune"),
