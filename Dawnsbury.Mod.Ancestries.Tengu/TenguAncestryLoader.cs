@@ -22,16 +22,35 @@ using Dawnsbury.Audio;
 using Microsoft.Xna.Framework;
 using Dawnsbury.Core.CharacterBuilder.Selections.Options;
 using Dawnsbury.Core.Creatures.Parts;
+using Dawnsbury.Core.Roller;
+using Dawnsbury.Core.Mechanics.Rules;
+using Dawnsbury.Core.CharacterBuilder.FeatsDb.Common;
 
 namespace Dawnsbury.Mods.Ancestries.Tengu;
 
-// TODO: port some of the nice QoL stuff to the other projects. That is:
-// * the copying stuff in the project file
-// * the preprocessor directive stuff and v2/v3 stuff, when thats in there
-
+// TODO:
+// * add dual-handed assault and the bastard sword (cause now this has become the tengu + two-hand mod)
+// * add the nodachi, that shit is swag
+// * make sure every prerequisite IN EVERY MOD is given in the text and not just in the code.
 public static class TenguAncestryLoader
 {
     public static readonly Trait TenguTrait = ModManager.RegisterTrait("Tengu", new TraitProperties("Tengu", true) { IsAncestryTrait = true });
+
+    public static readonly SpellId IgnitionSpellId = ModManager.RegisterNewSpell("Tengu:Ignition", 0, (spellId, caster, level, inCombat, spellInfo) =>
+    {
+        return Spells.CreateModern(IllustrationName.ProduceFlame, "Ignition",
+            [Trait.Attack, Trait.Cantrip, Trait.Fire, Trait.Primal, Trait.Arcane, Trait.VersatileMelee, Trait.SpellCannotBeChosenInCharacterBuilder],
+            "You snap your fingers and point at a target, which begins to smolder.",
+            "Make a spell attack roll. The flame deals " + S.HeightenedVariable(level + 1, 2) + "d4 fire damage." + S.FourDegreesOfSuccessReverse((string)null, (string)null, "Full damage.", "Double damage, and " + S.HeightenedVariable(level, 1) + "d4 persistent fire damage.") + "\n\n{b}Special: Versatile Melee.{/b} If you're adjacent to the target, increase all of the spell's damage dice to d6s; The spell becomes a melee spell attack and benefits from flanking." + S.HeightenText(level, 1, inCombat, "{b}Heightened (+1){/b} Increase the damage by 1d4 and the persistent damage on a critical hit by 1d4."),
+            Target.Ranged(6), level, null).WithSpellAttackRoll().WithSoundEffect(SfxName.FireRay)
+            .WithEffectOnEachTarget(async (spell, caster, target, result) =>
+            {
+                string dieSize = caster.IsAdjacentTo(target) ? "d6" : "d4";
+                await CommonSpellEffects.DealAttackRollDamage(spell, caster, target, result, (spell.SpellLevel + 1) + dieSize, DamageKind.Fire);
+                if (result == CheckResult.CriticalSuccess)
+                    target.AddQEffect(QEffect.PersistentDamage(spell.SpellLevel + dieSize, DamageKind.Fire));
+            });
+    });
 
     [DawnsburyDaysModMainMethod]
     public static void LoadMod()
@@ -71,6 +90,32 @@ public static class TenguAncestryLoader
         AddFeats(GetAncestryFeats());
 
         Items.RegisterItems();
+        //TODO: carry on with this when Petr adds the necessary thing for changing weapon damage dice
+        /*
+        ModManager.AddFeat(new TrueFeat(ModManager.RegisterFeatName("Dual-Handed Assault"),
+            4,
+            "You snap your free hand over to grip your weapon just long enough to add momentum and deliver a more powerful blow to your opponent.",
+            "{b}Requirements{/b} You are wielding a one-handed melee weapon and have a free hand\n\nMake a Strike with the required weapon. You quickly switch your grip during the Strike in order to make the attack with two hands. If the weapon doesn't have the two-hand trait, increase its weapon damage die by one step for this attack (1d4 » 1d6 » 1d8 » 1d10 » 1d12.) If the weapon has the two-hand trait, you gain the benefit of that trait as well as a circumstance bonus to damage equal to the weapon's number of damage dice. When the Strike is complete, you resume gripping the weapon with only one hand. This action doesn't end any stance or fighter feat effect that requires you to have one hand free.",
+            [Trait.Fighter, Trait.Flourish]).WithActionCost(1)
+            .WithPermanentQEffect("You quickly grip your one-handed weapon with both hands to make a stronger attack.", (QEffect self) =>
+            {
+                self.ProvideStrikeModifier = (Item weapon) =>
+                {
+                    StrikeModifiers strikeModifiers = new StrikeModifiers()
+                    {
+                        IncreaseWeaponDieByOneStep = true, // want to do this once more
+
+                    };
+                    CombatAction combatAction = self.Owner.CreateStrike(weapon, -1, strikeModifiers);
+                    combatAction.Name = "Dual-Handed Assault";
+                    combatAction.Illustration = new SideBySideIllustration(combatAction.Illustration, Items.ChangeGripArt);
+                    combatAction.ActionCost = 1;
+                    combatAction.Traits.AddRange([Trait.Fighter, Trait.Flourish]);
+
+                    return combatAction;
+                };
+            }));
+        */
     }
 
     static void AddFeats(IEnumerable<Feat> feats)
@@ -83,16 +128,16 @@ public static class TenguAncestryLoader
 
     static IEnumerable<Feat> GetAncestryFeats()
     {
-        Spell produceFlame = AllSpells.CreateModernSpellTemplate(SpellId.ProduceFlame, TenguTrait);
+        Spell ignition = AllSpells.CreateModernSpellTemplate(IgnitionSpellId, TenguTrait);
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Mariner's Fire"),
             1,
             "You conjure uncanny orbs of spiritual flame that float above or below the water's surface.",
-            $"You can cast the {produceFlame.ToSpellLink()} cantrip as a primal innate spell at will. Your spellcasting ability for this spell is Charisma. You can cast this cantrip underwater.",
+            $"You can cast the {ignition.ToSpellLink()} cantrip as a primal innate spell at will. Your spellcasting ability for this spell is Charisma. You can cast this cantrip underwater.",
             [TenguTrait]
-            ).WithIllustration(produceFlame.Illustration).WithRulesBlockForSpell(produceFlame.SpellId).WithOnCreature(delegate (Creature cr)
+            ).WithIllustration(ignition.Illustration).WithRulesBlockForSpell(ignition.SpellId).WithOnCreature(delegate (Creature cr)
             {
-                cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TenguTrait, Ability.Charisma, Trait.Primal).WithSpells([produceFlame.SpellId], cr.MaximumSpellRank);
+                cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TenguTrait, Ability.Charisma, Trait.Primal).WithSpells([ignition.SpellId], cr.MaximumSpellRank);
             }).WithOnSheet(calculatedSheet =>
             {
                 calculatedSheet.SetProficiency(Trait.Spell, Proficiency.Trained);
@@ -101,7 +146,7 @@ public static class TenguAncestryLoader
             ModManager.RegisterFeatName("One-Toed Hop", "One-Toed Hop {icon:Action}"),
             1,
             "Assuming a peculiar stance, you make a short hop on each toe.",
-            "You make a short 5ft Leap which does not trigger reactions that are triggered by movement, such as Attack of Opportunity.\n\n{b}Special{/b} If you also have the Powerful Leap feat, your Leap goes 5ft further.",
+            "You make a short 5ft Leap which does not trigger reactions that are triggered by movement, such as Attack of Opportunity.\n\n{b}Special{/b} If you also have the Powerful Leap feat, your Leap goes 5ft further, and you go high enough to jump over other creatures.",
             [TenguTrait]
             ).WithOnCreature((Creature cr) =>
             {
@@ -248,6 +293,7 @@ public static class TenguAncestryLoader
                 });
         }
         // end of Tengu Weapon Familiarity
+        // Uncanny Agility
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Uncanny Agility"),
             1,
@@ -258,24 +304,79 @@ public static class TenguAncestryLoader
             {
                 calculatedSheet.GrantFeat(FeatName.FeatherStep);
             });
+        // Waxed Feathers
+        // OOPS! this is an OGL feat and this is an ORC mod
+        //yield return new TrueFeat(
+        //    ModManager.RegisterFeatName("Waxed Feathers"),
+        //    1,
+        //    "Your feathers are coated in a waxy substance that repels water.",
+        //    "{b}Prerequisite{/b} Wavediver Tengu\n\nYou gain a +1 circumstance bonus to saving throws against effects that have the water trait.",
+        //    [TenguTrait]
+        //    ).WithPermanentQEffect((QEffect self) =>
+        //    {
+        //        self.Name = "Waxed Feathers";
+        //        self.Description = "You have a +1 circumstance bonus to saving throws against water effects.";
+        //        self.BonusToDefenses = (QEffect self, CombatAction? action, Defense defense) =>
+        //        {
+        //            if (!defense.IsSavingThrow()) return null;
+        //            else if (action != null && action.HasTrait(Trait.Water)) return new Bonus(1, BonusType.Circumstance, "Waxed Feathers");
+        //            else return null;
+        //        };
+        //    }).WithPrerequisite(calculatedSheet => calculatedSheet.Sheet.Heritage?.Name == "Wavediver Tengu", "You must be a Wavediver Tengu to choose this feat.");
+        // Dogfang Bite
+        // OOPS! this is an OGL feat and this is an ORC mod
+        //yield return new TrueFeat(
+        //    ModManager.RegisterFeatName("Dogfang Bite"),
+        //    5,
+        //    "You can swing your beak to slash your foes when piercing attacks won't do.",
+        //    "{b}Prerequisite{/b} Dogtooth Tengu\n\nYour beak unarmed attack gains the versatile S weapon trait, meaning it will deal piercing or slashing damage, whichever is better for you.",
+        //    [TenguTrait]
+        //    ).WithOnCreature((Creature cr) =>
+        //    {
+        //        cr.GetAttackItem("beak")?.Traits.Add(Trait.VersatileS);
+        //    }).WithPrerequisite(calculatedSheet => calculatedSheet.Sheet.Heritage?.Name == "Dogtooth Tengu", "You must be a Dogtooth Tengu to choose this feat.");
+        // TODO: Eat Fortune
+        //yield return new TrueFeat(
+        //    ModManager.RegisterFeatName("Eat Fortune {icon:Reaction}"),
+        //    1,
+        //    "As someone tries to twist fate, you consume the interference.",
+        //    "{b}Frequency{/b} once per day\n{b}Trigger{/b} A creature within 60 feet uses a fortune or misfortune effect.",
+        //    [TenguTrait]
+        //    ).WithOnCreature((Creature cr) =>
+        //    {
+
+        //    });
+        // Magpie Snatch
+        // concept: 1 action to pick up 2 items. Pretty powerful, but also the only time you're ever gonna do that in this game is when you go down
+
+        // Soaring Flight
         yield return new TrueFeat(
-            ModManager.RegisterFeatName("Waxed Feathers"),
-            1,
-            "Your feathers are coated in a waxy substance that repels water.",
-            "You gain a +1 circumstance bonus to saving throws against effects that have the water trait.",
+            ModManager.RegisterFeatName("Soaring Flight {icon:Action}"),
+            5,
+            "You take to the skies, if only for a moment.",
+            "{b}Frequency{/b} once per round\n\nYou make a 20ft Leap. This Leap is high enough to go above other creatures.\n\n{b}Special{/b} If you also have the Powerful Leap feat, your Leap goes 5ft further.",
             [TenguTrait]
-            ).WithPermanentQEffect((QEffect self) =>
+            ).WithOnCreature((Creature cr) =>
             {
-                self.Name = "Waxed Feathers";
-                self.Description = "You have a +1 circumstance bonus to saving throws against water effects.";
-                self.BonusToDefenses = (QEffect self, CombatAction? action, Defense defense) =>
+                cr.AddQEffect(new QEffect("Soaring Flight {icon:Action}", "Make a short Leap which doesn't trigger reactions to movement.")
                 {
-                    if (!defense.IsSavingThrow()) return null;
-                    else if (action != null && action.HasTrait(Trait.Water)) return new Bonus(1, BonusType.Circumstance, "Waxed Feathers");
-                    else return null;
-                };
-            }).WithPrerequisite(calculatedSheet => calculatedSheet.Sheet.Heritage?.Name == "Wavediver Tengu", "You must be a Wavediver Tengu to choose this feat.");
-        // TODO: add 5th level feats (and in the other ancestry mods, too!)
+                    ProvideActionIntoPossibilitySection = (QEffect self, PossibilitySection section) =>
+                    {
+#if DAWNSBURY_V2
+                        PossibilitySectionId location = PossibilitySectionId.OtherManeuvers;
+#else
+                        PossibilitySectionId location = PossibilitySectionId.Movement;
+#endif
+                        if (section.PossibilitySectionId == location)
+                        {
+                            return new ActionPossibility(SoaringFlight(cr));
+                        }
+                        else return null;
+                    }
+                });
+            });
+        // Tengu Feather Fan
+        // probably homebrew this to be a worn item instead of a wand you have to wield, cause that is just ridiculous and makes it completely worthless
     }
 
     static IEnumerable<Feat> GetHeritages()
@@ -441,16 +542,33 @@ public static class TenguAncestryLoader
 
     static CombatAction OneToedHop(Creature self)
     {
-
         int leapDistance = self.HasEffect(QEffectId.PowerfulLeap) ? 2 : 1;
         return new CombatAction(self, IllustrationName.Jump, "One-Toed Hop",
             [Trait.Move, Trait.Basic],
-            "{i}Assuming a peculiar stance, you make a short hop on each toe.{/i}\n\nMake a short " + S.HeightenedVariable(leapDistance * 5, 5) + "ft Leap which does not trigger reactions which are triggered by movement.",
+            "{i}Assuming a peculiar stance, you make a short hop on each toe.{/i}\n\nMake a short " + S.HeightenedVariable(leapDistance * 5, 5) + "ft Leap which does not trigger reactions which are triggered by movement. This Leap is high enough that you can jump over other creatures.",
             new TileTarget((Creature jumper, Tile tile) => jumper.Occupies != null && tile.IsTrulyGenuinelyFreeTo(jumper) && jumper.DistanceTo(tile) <= leapDistance && jumper.Occupies.HasLineOfEffectToIgnoreLesser(tile) != CoverKind.Blocked, null)
             ).WithEffectOnChosenTargets(async delegate (CombatAction action, Creature jumper, ChosenTargets target)
             {
                 if (target.ChosenTile == null) return;
                 await jumper.SingleTileMove(target.ChosenTile, action);
+            }).WithActionId(ActionId.Leap);
+    }
+
+    static readonly QEffectId SoaringFlightCooldown = ModManager.RegisterEnumMember<QEffectId>("soaringFlightCooldown");
+    static CombatAction SoaringFlight(Creature self)
+    {
+        // TODO: make once per turn
+        int leapDistance = self.HasEffect(QEffectId.PowerfulLeap) ? 5 : 4;
+        return new CombatAction(self, IllustrationName.Fly, "Soaring Flight",
+            [Trait.Move, Trait.Basic, Trait.ProvokesAsActionBegins],
+            "{i}You take to the skies, if only for a moment.{/i}\n\n{b}Frequency{/b} once per round\n\nYou make a " + S.HeightenedVariable(leapDistance * 5, 20) + "ft Leap. This Leap is high enough to go above other creatures.",
+            new TileTarget((Creature jumper, Tile tile) => jumper.Occupies != null && tile.IsTrulyGenuinelyFreeTo(jumper) && jumper.DistanceTo(tile) <= leapDistance && jumper.Occupies.HasLineOfEffectToIgnoreLesser(tile) != CoverKind.Blocked, null)
+            .WithAdditionalTargetingRequirement((jumper, _) => jumper.HasEffect(SoaringFlightCooldown) ? Usability.NotUsable("Soaring Flight can only be used once per turn.") : Usability.Usable)
+            ).WithEffectOnChosenTargets(async delegate (CombatAction action, Creature jumper, ChosenTargets target)
+            {
+                if (target.ChosenTile == null) return;
+                await jumper.SingleTileMove(target.ChosenTile, action);
+                jumper.AddQEffect(new QEffect() { Id = SoaringFlightCooldown, ExpiresAt = ExpirationCondition.ExpiresAtStartOfYourTurn });
             }).WithActionId(ActionId.Leap);
     }
 }

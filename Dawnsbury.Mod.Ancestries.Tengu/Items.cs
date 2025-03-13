@@ -20,7 +20,7 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
         static public readonly Trait Wakizashi = ModManager.RegisterTrait("Wakizashi", new TraitProperties("Wakizashi", false));
         static public readonly Trait TenguGaleBlade = ModManager.RegisterTrait("TenguGaleBlade", new TraitProperties("Tengu Gale Blade", false));
 
-        static readonly Illustration ChangeGripArt = new ModdedIllustration("TenguAssets/changeGrip.png");
+        static public readonly Illustration ChangeGripArt = new ModdedIllustration("TenguAssets/changeGrip.png");
 
         public static void RegisterItems()
         {
