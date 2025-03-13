@@ -26,6 +26,7 @@ using Dawnsbury.Core.Roller;
 using Dawnsbury.Core.Mechanics.Rules;
 using Dawnsbury.Core.CharacterBuilder.FeatsDb.Common;
 using Dawnsbury.Display;
+using Dawnsbury.Core.CharacterBuilder;
 
 namespace Dawnsbury.Mods.Ancestries.Tengu;
 
@@ -45,7 +46,7 @@ public static class TenguAncestryLoader
         return Spells.CreateModern(IllustrationName.ProduceFlame, "Ignition",
             [Trait.Attack, Trait.Cantrip, Trait.Fire, Trait.Primal, Trait.Arcane, Trait.VersatileMelee, Trait.SpellCannotBeChosenInCharacterBuilder],
             "You snap your fingers and point at a target, which begins to smolder.",
-            "Make a spell attack roll. The flame deals " + S.HeightenedVariable(level + 1, 2) + "d4 fire damage." + S.FourDegreesOfSuccessReverse((string)null, (string)null, "Full damage.", "Double damage, and " + S.HeightenedVariable(level, 1) + "d4 persistent fire damage.") + "\n\n{b}Special: Versatile Melee.{/b} If you're adjacent to the target, increase all of the spell's damage dice to d6s; The spell becomes a melee spell attack and benefits from flanking." + S.HeightenText(level, 1, inCombat, "{b}Heightened (+1){/b} Increase the damage by 1d4 and the persistent damage on a critical hit by 1d4."),
+            "Make a spell attack roll. The flame deals " + S.HeightenedVariable(level + 1, 2) + "d4 fire damage." + S.FourDegreesOfSuccessReverse(null, null, "Full damage.", "Double damage, and " + S.HeightenedVariable(level, 1) + "d4 persistent fire damage.") + "\n\n{b}Special: Versatile Melee.{/b} If you're adjacent to the target, increase all of the spell's damage dice to d6s; The spell becomes a melee spell attack and benefits from flanking." + S.HeightenText(level, 1, inCombat, "{b}Heightened (+1){/b} Increase the damage by 1d4 and the persistent damage on a critical hit by 1d4."),
             Target.Ranged(6), level, null).WithSpellAttackRoll().WithSoundEffect(SfxName.FireRay)
             .WithEffectOnEachTarget(async (spell, caster, target, result) =>
             {
@@ -242,21 +243,9 @@ public static class TenguAncestryLoader
             {
                 foreach (Trait t in familiarWeapons)
                 {
-                    // TODO: turn this little chunk into an extension function, CalculatedCharacterSheetValues.UpgradeProficiencyRemaster()
-                    // legacy/remaster compatibility: all remaster classes have simple prof, but some legacy ones (like wizard) don't.
-                    // for these classes, grant training instead of an adjustment, as if they had simple proficiency.
-                    // (they suck too bad to get a proficiency increase before level 8 so it doesn't matter beyond Trained)
-                    if (calculatedSheet.GetProficiency(Trait.Simple) == Proficiency.Untrained)
-                    {
-                        calculatedSheet.Proficiencies.Set([t, Trait.Simple], Proficiency.Trained);
-                        calculatedSheet.Proficiencies.Set([t, Trait.Martial], Proficiency.Trained);
-                    }
-                    else
-                    {
-                        calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(t) && traits.Contains(Trait.Martial), Trait.Simple);
-                        calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(t) && traits.Contains(Trait.Advanced), Trait.Martial);
-                    }
+                    ApplyRemasterProficiencyUpgrade(calculatedSheet, t);
                 }
+                // make the weapon choice subfeats now rather than at mod load, or else modded weapons aren't included
                 MakeTenguWeaponFamiliaritySubfeats();
                 calculatedSheet.AddSelectionOptionRightNow(
                     new SingleFeatSelectionOption("TenguWeaponFamiliaritySwordChoice", "Tengu Weapon Familiarity", 1,
@@ -508,19 +497,7 @@ public static class TenguAncestryLoader
                 traits: [TenguWeaponFamiliaritySwordChoiceTrait],
                 subfeats: null).WithOnSheet((calculatedSheet) =>
                 {
-                    // legacy/remaster compatibility: all remaster classes have simple prof, but some legacy ones (like wizard) don't.
-                    // for these classes, grant training instead of an adjustment, as if they had simple proficiency.
-                    // (they suck too bad to get a proficiency increase before level 8 so it doesn't matter beyond Trained)
-                    if (calculatedSheet.GetProficiency(Trait.Simple) == Proficiency.Untrained)
-                    {
-                        calculatedSheet.Proficiencies.Set([item.MainTrait, Trait.Simple], Proficiency.Trained);
-                        calculatedSheet.Proficiencies.Set([item.MainTrait, Trait.Martial], Proficiency.Trained);
-                    }
-                    else
-                    {
-                        calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(item.MainTrait) && traits.Contains(Trait.Martial), Trait.Simple);
-                        calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(item.MainTrait) && traits.Contains(Trait.Advanced), Trait.Martial);
-                    }
+                    ApplyRemasterProficiencyUpgrade(calculatedSheet, item.MainTrait);
                 }).WithOnCreature((Creature cr) =>
                 {
                     // grant crit spec with chosen weapon at level 5
@@ -532,6 +509,26 @@ public static class TenguAncestryLoader
                     });
 #endif
                 }));
+        }
+    }
+
+    // Applies the remaster style weapon proficiency upgrade, which uses simple prof for martial and martial prof for advanced.
+    // In addition, grants Training for characters that are untrained in simple weapons. This is for legacy compatibility; in remaster,
+    // all classes are assumed to have simple proficiency, which makes this kind of adjustment not work on classes like legacy wizard.
+    private static void ApplyRemasterProficiencyUpgrade(CalculatedCharacterSheetValues sheet, Trait upgradeTrait)
+    {
+        // legacy/remaster compatibility: all remaster classes have simple prof, but some legacy ones (like wizard) don't.
+        // for these classes, grant training instead of an adjustment, as if they had simple proficiency.
+        // (they suck too bad to get a proficiency increase before level 8 so it doesn't matter beyond Trained)
+        if (sheet.GetProficiency(Trait.Simple) == Proficiency.Untrained)
+        {
+            sheet.Proficiencies.Set([upgradeTrait, Trait.Simple], Proficiency.Trained);
+            sheet.Proficiencies.Set([upgradeTrait, Trait.Martial], Proficiency.Trained);
+        }
+        else
+        {
+            sheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(upgradeTrait) && traits.Contains(Trait.Martial), Trait.Simple);
+            sheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(upgradeTrait) && traits.Contains(Trait.Advanced), Trait.Martial);
         }
     }
 }
