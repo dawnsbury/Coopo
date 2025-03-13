@@ -11,6 +11,7 @@ using Dawnsbury.Core;
 using Microsoft.Xna.Framework;
 using System.Diagnostics;
 using Dawnsbury.Audio;
+using Dawnsbury.Auxiliary;
 
 namespace Dawnsbury.Mods.Ancestries.Tanuki;
 
@@ -146,18 +147,33 @@ public static class TanukiAncestryLoader
                 {
                     BonusToDefenses = (QEffect effect, CombatAction? action, Defense defense) =>
                     {
-                        // TODO: this should only work on saving throws
-                        if (action != null && action.HasTrait(Trait.Emotion)) return new Bonus(1, BonusType.Circumstance, "Even-tempered");
-                        else return null;
+                        if (action == null) return null;
+                        if (!action.HasTrait(Trait.Emotion)) return null;
+                        if (action.SavingThrow == null) return null;
+                        if (!action.SavingThrow.Defense.IsSavingThrow()) return null;
+                        return new Bonus(1, BonusType.Circumstance, "Even-tempered");
                     },
-                    // TODO: use non-obsolete v3 version of this event
+#if DAWNSBURY_V2
+                    // legacy V2 method, equivalent to following version
                     AdjustSavingThrowResult = (QEffect effect, CombatAction action, CheckResult result) =>
                     {
                         if (!action.HasTrait(Trait.Emotion)) return result;
+                        if (action.SavingThrow == null) return result;
+                        if (!action.SavingThrow.Defense.IsSavingThrow()) return result;
+                        if (result == CheckResult.Success) return CheckResult.CriticalSuccess;
+                        if (result == CheckResult.Failure) return CheckResult.CriticalFailure;
+                        else return result;
+                    },
+#else
+                    AdjustSavingThrowCheckResult = (QEffect effect, Defense defense, CombatAction action, CheckResult result) =>
+                    {
+                        if (!action.HasTrait(Trait.Emotion)) return result;
+                        if (!defense.IsSavingThrow()) return result;
                         if (result == CheckResult.Success) return CheckResult.CriticalSuccess;
                         if (result == CheckResult.Failure) return CheckResult.CriticalFailure;
                         else return result;
                     }
+#endif
                 });
             });
 

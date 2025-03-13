@@ -31,8 +31,7 @@ namespace Dawnsbury.Mods.Ancestries.Kitsune
                 Target.Self()).WithEffectOnSelf(async (CombatAction self, Creature cr) =>
                 {
                     int diceCount = Math.Max(1, cr.MaximumSpellRank);
-                    // TODO: use HealAsync instead
-                    cr.Heal(DiceFormula.FromText(diceCount + "d8", "dice formula source, where does this show up?"), self);
+                    await cr.HealAsync(DiceFormula.FromText(diceCount + "d8", "Orb Restoration"), self);
                     cr.PersistentUsedUpResources.UsedUpActions.Add("StarOrb");
                     QEffect? starOrbEffect = cr.FindQEffect(StarOrbQEffectId);
                     if (starOrbEffect != null) starOrbEffect.ExpiresAt = ExpirationCondition.Immediately;

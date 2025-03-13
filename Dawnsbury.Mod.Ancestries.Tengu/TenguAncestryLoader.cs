@@ -25,6 +25,7 @@ using Dawnsbury.Core.Creatures.Parts;
 using Dawnsbury.Core.Roller;
 using Dawnsbury.Core.Mechanics.Rules;
 using Dawnsbury.Core.CharacterBuilder.FeatsDb.Common;
+using Dawnsbury.Display;
 
 namespace Dawnsbury.Mods.Ancestries.Tengu;
 
@@ -35,6 +36,9 @@ namespace Dawnsbury.Mods.Ancestries.Tengu;
 public static class TenguAncestryLoader
 {
     public static readonly Trait TenguTrait = ModManager.RegisterTrait("Tengu", new TraitProperties("Tengu", true) { IsAncestryTrait = true });
+    public static readonly Trait TenguWeaponFamiliaritySwordChoiceTrait = ModManager.RegisterTrait("TenguWeaponFamiliaritySwordChoiceTrait", new TraitProperties("TWFCT", false));
+
+    public static readonly List<Trait> familiarWeapons = [Items.Katana, Items.Khakkara, Items.TempleSword, Items.Wakizashi, Items.TenguGaleBlade];
 
     public static readonly SpellId IgnitionSpellId = ModManager.RegisterNewSpell("Tengu:Ignition", 0, (spellId, caster, level, inCombat, spellInfo) =>
     {
@@ -57,7 +61,7 @@ public static class TenguAncestryLoader
     {
         // enable the debugger in debug mode, and assert that the right version of the game's DLL is being built against
 #if DEBUG || DEBUG_V2
-        //Debugger.Launch();
+        Debugger.Launch();
 #endif
 #if DAWNSBURY_V2
         ModManager.AssertV2();
@@ -87,9 +91,9 @@ public static class TenguAncestryLoader
 
         ModManager.AddFeat(TenguAncestry);
 
-        AddFeats(GetAncestryFeats());
-
         Items.RegisterItems();
+
+        AddFeats(GetAncestryFeats());
         //TODO: carry on with this when Petr adds the necessary thing for changing weapon damage dice
         /*
         ModManager.AddFeat(new TrueFeat(ModManager.RegisterFeatName("Dual-Handed Assault"),
@@ -177,7 +181,6 @@ public static class TenguAncestryLoader
             {
                 cr.AddQEffect(new QEffect("Scavenger's Search", "You have a +2 circumstance bonus when Seeking objects.")
                 {
-                    // TODO: i think the new update added a way to make this work smoother
                     BonusToAttackRolls = (QEffect self, CombatAction action, Creature? target) =>
                     {
                         if (target == null) return null;
@@ -229,8 +232,6 @@ public static class TenguAncestryLoader
                 calculatedSheet.SetProficiency(Trait.Spell, Proficiency.Trained);
             });
         // Tengu Weapon Familiarity and Subfeats
-        List<Trait> familiarWeapons = [Items.Katana, Items.Khakkara, Items.TempleSword, Items.Wakizashi, Items.TenguGaleBlade];
-        Trait TenguWeaponFamiliaritySwordChoiceTrait = ModManager.RegisterTrait("TenguWeaponFamiliaritySwordChoiceTrait", new TraitProperties("TWFCT", false));
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Tengu Weapon Familiarity"),
             1,
@@ -241,6 +242,7 @@ public static class TenguAncestryLoader
             {
                 foreach (Trait t in familiarWeapons)
                 {
+                    // TODO: turn this little chunk into an extension function, CalculatedCharacterSheetValues.UpgradeProficiencyRemaster()
                     // legacy/remaster compatibility: all remaster classes have simple prof, but some legacy ones (like wizard) don't.
                     // for these classes, grant training instead of an adjustment, as if they had simple proficiency.
                     // (they suck too bad to get a proficiency increase before level 8 so it doesn't matter beyond Trained)
@@ -255,6 +257,7 @@ public static class TenguAncestryLoader
                         calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(t) && traits.Contains(Trait.Advanced), Trait.Martial);
                     }
                 }
+                MakeTenguWeaponFamiliaritySubfeats();
                 calculatedSheet.AddSelectionOptionRightNow(
                     new SingleFeatSelectionOption("TenguWeaponFamiliaritySwordChoice", "Tengu Weapon Familiarity", 1,
                         feat => feat.HasTrait(TenguWeaponFamiliaritySwordChoiceTrait)
@@ -271,50 +274,6 @@ public static class TenguAncestryLoader
                 });
 #endif
             });
-        foreach (Item item in Core.Mechanics.Treasure.Items.ShopItems)
-        {
-            if (!item.HasTrait(Trait.Sword)) continue;
-            if (item.MainTrait == Trait.None) continue;
-#if DAWNSBURY_V2
-            if (item.ItemModifications.Count != 0) continue;
-#else
-            if (item.Runes.Count != 0) continue;
-#endif
-            if (familiarWeapons.Where(weaponTrait => item.HasTrait(weaponTrait)).Any()) continue; // if this weapon is anything already covered by the base feat, don't list it
-            if (item.HasTrait(Trait.Simple)) continue; // this feat doesn't achieve anything for simple weapons
-            yield return new Feat(
-                ModManager.RegisterFeatName($"TenguWeaponFamiliarity:{item.Name}", item.Name.Capitalize()),
-                $"You have experience with {item.Name}s.",
-                $"For the purpose of proficiency, you treat {item.Name}s as {(item.HasTrait(Trait.Advanced) ? "martial" : "simple")} weapons.",
-                traits: [TenguWeaponFamiliaritySwordChoiceTrait],
-                subfeats: null).WithOnSheet((calculatedSheet) =>
-                {
-                    // legacy/remaster compatibility: all remaster classes have simple prof, but some legacy ones (like wizard) don't.
-                    // for these classes, grant training instead of an adjustment, as if they had simple proficiency.
-                    // (they suck too bad to get a proficiency increase before level 8 so it doesn't matter beyond Trained)
-                    if (calculatedSheet.GetProficiency(Trait.Simple) == Proficiency.Untrained)
-                    {
-                        calculatedSheet.Proficiencies.Set([item.MainTrait, Trait.Simple], Proficiency.Trained);
-                        calculatedSheet.Proficiencies.Set([item.MainTrait, Trait.Martial], Proficiency.Trained);
-                    }
-                    else
-                    {
-                        calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(item.MainTrait) && traits.Contains(Trait.Martial), Trait.Simple);
-                        calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(item.MainTrait) && traits.Contains(Trait.Advanced), Trait.Martial);
-                    }
-                }).WithOnCreature((Creature cr) =>
-                {
-                    // grant crit spec with chosen weapon at level 5
-#if !DAWNSBURY_V2
-                    if (cr.Level < 5) return;
-                    cr.AddQEffect(new QEffect()
-                    {
-                        YouHaveCriticalSpecialization = (QEffect self, Item weapon, CombatAction _, Creature _) => weapon.HasTrait(item.MainTrait)
-                    });
-#endif
-                });
-        }
-        // end of Tengu Weapon Familiarity
         // Uncanny Agility
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Uncanny Agility"),
@@ -465,8 +424,6 @@ public static class TenguAncestryLoader
                     }
                 });
             });
-        // TODO: maybe add more to this heritage later to replace the missing concealment benefit
-        // maybe a reaction or triggered free action that lets you ignore concealment once per fight or something
         yield return new HeritageSelectionFeat(
             ModManager.RegisterFeatName("Stormtossed Tengu"),
             "Whether due to a storm god's blessing or hatching from your egg during a squall, you are resistant to storms.",
@@ -495,28 +452,6 @@ public static class TenguAncestryLoader
             ).WithOnCreature(delegate (Creature cr)
             {
                 cr.AddQEffect(QEffect.Swimming());
-                //cr.AddQEffect(new QEffect("Swimming", "While swimming, your speed is reduced to 15ft.")
-                //{
-                //    Id = QEffectId.Swimming,
-                //    BonusToAllSpeeds = (QEffect self) =>
-                //    {
-                //        // reduce speed to 15ft, or apply no reduction if speed is already that low
-                //        int speedDiffWhenSwimming = Math.Min(3 - self.Owner.BaseSpeed, 0);
-                //        // if in deep water, shallow water, or underwater, reduce speed to 15ft
-                //        if (self.Owner.Occupies.Kind == TileKind.Water || self.Owner.Occupies.Kind == TileKind.ShallowWater)
-                //        {
-                //            return new Bonus(speedDiffWhenSwimming, BonusType.Untyped, "Swimming");
-                //        }
-                //        // allow to move at the speed of difficult terrain when in aquatic combat, in case the base speed halved is more than the swim speed
-                //        // (because it would be weird for a fast swimming race to be slower at swimming than anyone else)
-                //        if (self.Owner.FindQEffect(QEffectId.AquaticCombat) != null)
-                //        {
-                //            speedDiffWhenSwimming = Math.Max(speedDiffWhenSwimming, self.Owner.BaseSpeed / 2);
-                //            return new Bonus(speedDiffWhenSwimming, BonusType.Untyped, "Swimming");
-                //        }
-                //        else return null;
-                //    }
-                //});
             });
     }
 
@@ -537,7 +472,6 @@ public static class TenguAncestryLoader
     static readonly QEffectId SoaringFlightCooldown = ModManager.RegisterEnumMember<QEffectId>("soaringFlightCooldown");
     static CombatAction SoaringFlight(Creature self)
     {
-        // TODO: make once per turn
         int leapDistance = self.HasEffect(QEffectId.PowerfulLeap) ? 5 : 4;
         return new CombatAction(self, IllustrationName.Fly, "Soaring Flight",
             [Trait.Move, Trait.Basic, Trait.ProvokesAsActionBegins],
@@ -550,5 +484,54 @@ public static class TenguAncestryLoader
                 await jumper.SingleTileMove(target.ChosenTile, action);
                 jumper.AddQEffect(new QEffect() { Id = SoaringFlightCooldown, ExpiresAt = ExpirationCondition.ExpiresAtStartOfYourTurn });
             }).WithActionId(ActionId.Leap);
+    }
+
+    // This has to be done after mod loading, cause modded items aren't loaded yet
+    static void MakeTenguWeaponFamiliaritySubfeats()
+    {
+        foreach (Item item in Core.Mechanics.Treasure.Items.ShopItems)
+        {
+            if (!item.HasTrait(Trait.Sword)) continue;
+            if (item.MainTrait == Trait.None) continue;
+#if DAWNSBURY_V2
+            if (item.ItemModifications.Count != 0) continue;
+#else
+            if (item.Runes.Count != 0) continue;
+#endif
+            if (familiarWeapons.Where(weaponTrait => item.HasTrait(weaponTrait)).Any()) continue; // if this weapon is anything already covered by the base feat, don't list it
+            if (item.HasTrait(Trait.Simple)) continue; // this feat doesn't achieve anything for simple weapons
+            if (ModManager.TryParse<FeatName>($"TenguWeaponFamiliarity:{item.Name}", out _)) continue; //don't make duplicates
+            ModManager.AddFeat(new Feat(
+                ModManager.RegisterFeatName($"TenguWeaponFamiliarity:{item.Name}", item.Name.Capitalize()),
+                $"You have experience with {item.Name}s.",
+                $"For the purpose of proficiency, you treat {item.Name}s as {(item.HasTrait(Trait.Advanced) ? "martial" : "simple")} weapons.",
+                traits: [TenguWeaponFamiliaritySwordChoiceTrait],
+                subfeats: null).WithOnSheet((calculatedSheet) =>
+                {
+                    // legacy/remaster compatibility: all remaster classes have simple prof, but some legacy ones (like wizard) don't.
+                    // for these classes, grant training instead of an adjustment, as if they had simple proficiency.
+                    // (they suck too bad to get a proficiency increase before level 8 so it doesn't matter beyond Trained)
+                    if (calculatedSheet.GetProficiency(Trait.Simple) == Proficiency.Untrained)
+                    {
+                        calculatedSheet.Proficiencies.Set([item.MainTrait, Trait.Simple], Proficiency.Trained);
+                        calculatedSheet.Proficiencies.Set([item.MainTrait, Trait.Martial], Proficiency.Trained);
+                    }
+                    else
+                    {
+                        calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(item.MainTrait) && traits.Contains(Trait.Martial), Trait.Simple);
+                        calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(item.MainTrait) && traits.Contains(Trait.Advanced), Trait.Martial);
+                    }
+                }).WithOnCreature((Creature cr) =>
+                {
+                    // grant crit spec with chosen weapon at level 5
+#if !DAWNSBURY_V2
+                    if (cr.Level < 5) return;
+                    cr.AddQEffect(new QEffect()
+                    {
+                        YouHaveCriticalSpecialization = (QEffect self, Item weapon, CombatAction _, Creature _) => weapon.HasTrait(item.MainTrait)
+                    });
+#endif
+                }));
+        }
     }
 }
