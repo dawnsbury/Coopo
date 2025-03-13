@@ -241,8 +241,19 @@ public static class TenguAncestryLoader
             {
                 foreach (Trait t in familiarWeapons)
                 {
-                    calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(t) && traits.Contains(Trait.Martial), Trait.Simple);
-                    calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(t) && traits.Contains(Trait.Advanced), Trait.Martial);
+                    // legacy/remaster compatibility: all remaster classes have simple prof, but some legacy ones (like wizard) don't.
+                    // for these classes, grant training instead of an adjustment, as if they had simple proficiency.
+                    // (they suck too bad to get a proficiency increase before level 8 so it doesn't matter beyond Trained)
+                    if (calculatedSheet.GetProficiency(Trait.Simple) == Proficiency.Untrained)
+                    {
+                        calculatedSheet.Proficiencies.Set([t, Trait.Simple], Proficiency.Trained);
+                        calculatedSheet.Proficiencies.Set([t, Trait.Martial], Proficiency.Trained);
+                    }
+                    else
+                    {
+                        calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(t) && traits.Contains(Trait.Martial), Trait.Simple);
+                        calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(t) && traits.Contains(Trait.Advanced), Trait.Martial);
+                    }
                 }
                 calculatedSheet.AddSelectionOptionRightNow(
                     new SingleFeatSelectionOption("TenguWeaponFamiliaritySwordChoice", "Tengu Weapon Familiarity", 1,
@@ -278,8 +289,19 @@ public static class TenguAncestryLoader
                 traits: [TenguWeaponFamiliaritySwordChoiceTrait],
                 subfeats: null).WithOnSheet((calculatedSheet) =>
                 {
-                    calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(item.MainTrait) && traits.Contains(Trait.Martial), Trait.Simple);
-                    calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(item.MainTrait) && traits.Contains(Trait.Advanced), Trait.Martial);
+                    // legacy/remaster compatibility: all remaster classes have simple prof, but some legacy ones (like wizard) don't.
+                    // for these classes, grant training instead of an adjustment, as if they had simple proficiency.
+                    // (they suck too bad to get a proficiency increase before level 8 so it doesn't matter beyond Trained)
+                    if (calculatedSheet.GetProficiency(Trait.Simple) == Proficiency.Untrained)
+                    {
+                        calculatedSheet.Proficiencies.Set([item.MainTrait, Trait.Simple], Proficiency.Trained);
+                        calculatedSheet.Proficiencies.Set([item.MainTrait, Trait.Martial], Proficiency.Trained);
+                    }
+                    else
+                    {
+                        calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(item.MainTrait) && traits.Contains(Trait.Martial), Trait.Simple);
+                        calculatedSheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(item.MainTrait) && traits.Contains(Trait.Advanced), Trait.Martial);
+                    }
                 }).WithOnCreature((Creature cr) =>
                 {
                     // grant crit spec with chosen weapon at level 5
@@ -304,48 +326,6 @@ public static class TenguAncestryLoader
             {
                 calculatedSheet.GrantFeat(FeatName.FeatherStep);
             });
-        // Waxed Feathers
-        // OOPS! this is an OGL feat and this is an ORC mod
-        //yield return new TrueFeat(
-        //    ModManager.RegisterFeatName("Waxed Feathers"),
-        //    1,
-        //    "Your feathers are coated in a waxy substance that repels water.",
-        //    "{b}Prerequisite{/b} Wavediver Tengu\n\nYou gain a +1 circumstance bonus to saving throws against effects that have the water trait.",
-        //    [TenguTrait]
-        //    ).WithPermanentQEffect((QEffect self) =>
-        //    {
-        //        self.Name = "Waxed Feathers";
-        //        self.Description = "You have a +1 circumstance bonus to saving throws against water effects.";
-        //        self.BonusToDefenses = (QEffect self, CombatAction? action, Defense defense) =>
-        //        {
-        //            if (!defense.IsSavingThrow()) return null;
-        //            else if (action != null && action.HasTrait(Trait.Water)) return new Bonus(1, BonusType.Circumstance, "Waxed Feathers");
-        //            else return null;
-        //        };
-        //    }).WithPrerequisite(calculatedSheet => calculatedSheet.Sheet.Heritage?.Name == "Wavediver Tengu", "You must be a Wavediver Tengu to choose this feat.");
-        // Dogfang Bite
-        // OOPS! this is an OGL feat and this is an ORC mod
-        //yield return new TrueFeat(
-        //    ModManager.RegisterFeatName("Dogfang Bite"),
-        //    5,
-        //    "You can swing your beak to slash your foes when piercing attacks won't do.",
-        //    "{b}Prerequisite{/b} Dogtooth Tengu\n\nYour beak unarmed attack gains the versatile S weapon trait, meaning it will deal piercing or slashing damage, whichever is better for you.",
-        //    [TenguTrait]
-        //    ).WithOnCreature((Creature cr) =>
-        //    {
-        //        cr.GetAttackItem("beak")?.Traits.Add(Trait.VersatileS);
-        //    }).WithPrerequisite(calculatedSheet => calculatedSheet.Sheet.Heritage?.Name == "Dogtooth Tengu", "You must be a Dogtooth Tengu to choose this feat.");
-        // TODO: Eat Fortune
-        //yield return new TrueFeat(
-        //    ModManager.RegisterFeatName("Eat Fortune {icon:Reaction}"),
-        //    1,
-        //    "As someone tries to twist fate, you consume the interference.",
-        //    "{b}Frequency{/b} once per day\n{b}Trigger{/b} A creature within 60 feet uses a fortune or misfortune effect.",
-        //    [TenguTrait]
-        //    ).WithOnCreature((Creature cr) =>
-        //    {
-
-        //    });
         // Magpie Snatch
         // concept: 1 action to pick up 2 items. Pretty powerful, but also the only time you're ever gonna do that in this game is when you go down
 
