@@ -475,27 +475,39 @@ public static class TenguAncestryLoader
             }).WithActionId(ActionId.Leap);
     }
 
+
+    static bool TenguWeaponFamiliaritySubfeatsAlreadyInitialised = false;
     // This has to be done after mod loading, cause modded items aren't loaded yet
+    // TODO: the subfeat choice isn't sticking between loads. figure out the issue
     static void MakeTenguWeaponFamiliaritySubfeats()
     {
-        foreach (Item item in Core.Mechanics.Treasure.Items.ShopItems)
+        if (TenguWeaponFamiliaritySubfeatsAlreadyInitialised) return;
+        // quick hack to hide the roguelike mod's specific magic weapons, since they use a custom trait.
+        // TODO: remove this hack when the roguelike mod starts using the basegame version of the trait
+        bool roguelikeModInstalled = ModManager.TryParse("RL_CannotHavePropertyRune", out Trait roguelikeSMW);
+
+        // get all base types of sword which are not accounted for already by tengu's familiar weapons
+        IEnumerable<Item> items = from item in Core.Mechanics.Treasure.Items.GetItemTemplates()
+                                  where item.MainTrait != Trait.None
+                                    && item.HasTrait(Trait.Sword)
+                                    && !familiarWeapons.Where(weaponTrait => item.HasTrait(weaponTrait)).Any()
+                                    && !item.HasTrait(Trait.SpecificMagicWeapon)
+                                    && !(roguelikeModInstalled && item.HasTrait(roguelikeSMW))
+                                  orderby item.Name
+                                  select item;
+
+        // split the weapons into two groups in the list (cause it looks nice)
+        FeatGroup advancedWeapons = new FeatGroup("Advanced weapons", 1);
+        FeatGroup martialWeapons = new FeatGroup("Martial weapons", 2);
+        foreach (Item item in items)
         {
-            if (!item.HasTrait(Trait.Sword)) continue;
-            if (item.MainTrait == Trait.None) continue;
-#if DAWNSBURY_V2
-            if (item.ItemModifications.Count != 0) continue;
-#else
-            if (item.Runes.Count != 0) continue;
-#endif
-            if (familiarWeapons.Where(weaponTrait => item.HasTrait(weaponTrait)).Any()) continue; // if this weapon is anything already covered by the base feat, don't list it
-            if (item.HasTrait(Trait.Simple)) continue; // this feat doesn't achieve anything for simple weapons
             if (ModManager.TryParse<FeatName>($"TenguWeaponFamiliarity:{item.Name}", out _)) continue; //don't make duplicates
-            ModManager.AddFeat(new Feat(
+            Feat feat = new Feat(
                 ModManager.RegisterFeatName($"TenguWeaponFamiliarity:{item.Name}", item.Name.Capitalize()),
                 $"You have experience with {item.Name}s.",
                 $"For the purpose of proficiency, you treat {item.Name}s as {(item.HasTrait(Trait.Advanced) ? "martial" : "simple")} weapons.",
                 traits: [TenguWeaponFamiliaritySwordChoiceTrait],
-                subfeats: null).WithOnSheet((calculatedSheet) =>
+                subfeats: null).WithIllustration(item.Illustration).WithOnSheet((calculatedSheet) =>
                 {
                     ApplyRemasterProficiencyUpgrade(calculatedSheet, item.MainTrait);
                 }).WithOnCreature((Creature cr) =>
@@ -505,11 +517,14 @@ public static class TenguAncestryLoader
                     if (cr.Level < 5) return;
                     cr.AddQEffect(new QEffect()
                     {
-                        YouHaveCriticalSpecialization = (QEffect self, Item weapon, CombatAction _, Creature _) => weapon.HasTrait(item.MainTrait)
+                        YouHaveCriticalSpecialization = (QEffect self, Item weapon, CombatAction _, Creature _) => weapon.HasTrait(weapon.MainTrait)
                     });
 #endif
-                }));
+                });
+            feat.FeatGroup = item.HasTrait(Trait.Advanced) ? advancedWeapons : martialWeapons;
+            ModManager.AddFeat(feat);
         }
+        TenguWeaponFamiliaritySubfeatsAlreadyInitialised = true;
     }
 
     // Applies the remaster style weapon proficiency upgrade, which uses simple prof for martial and martial prof for advanced.

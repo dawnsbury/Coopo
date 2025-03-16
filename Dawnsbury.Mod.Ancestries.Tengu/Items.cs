@@ -1,12 +1,21 @@
-﻿using Dawnsbury.Core.CombatActions;
+﻿using Dawnsbury.Core;
+using Dawnsbury.Core.CharacterBuilder.FeatsDb.Common;
+using Dawnsbury.Core.CombatActions;
 using Dawnsbury.Core.Creatures;
+using Dawnsbury.Core.Creatures.Parts;
 using Dawnsbury.Core.Mechanics;
+using Dawnsbury.Core.Mechanics.Core;
 using Dawnsbury.Core.Mechanics.Enumerations;
 using Dawnsbury.Core.Mechanics.Targeting;
 using Dawnsbury.Core.Mechanics.Treasure;
 using Dawnsbury.Core.Possibilities;
+using Dawnsbury.Core.Roller;
 using Dawnsbury.Display.Illustrations;
+using Dawnsbury.Display.Text;
 using Dawnsbury.Modding;
+using System;
+
+// TODO: check the licensing on these weapons. I know that the nodachi was printed in the ORC Tian Xia Character Guide, so you need to reference that. everything else should be in PC2 cause Tengu references them.
 
 namespace Dawnsbury.Mods.Ancestries.Tengu
 {
@@ -19,6 +28,7 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
         static public readonly Trait TempleSword = ModManager.RegisterTrait("TempleSword", new TraitProperties("Temple Sword", false));
         static public readonly Trait Wakizashi = ModManager.RegisterTrait("Wakizashi", new TraitProperties("Wakizashi", false));
         static public readonly Trait TenguGaleBlade = ModManager.RegisterTrait("TenguGaleBlade", new TraitProperties("Tengu Gale Blade", false));
+        static public readonly Trait Nodachi = ModManager.RegisterTrait("Nodachi", new TraitProperties("Nodachi", false));
 
         static public readonly Illustration ChangeGripArt = new ModdedIllustration("TenguAssets/changeGrip.png");
 
@@ -77,9 +87,19 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
                     WeaponProperties = new WeaponProperties("1d6", DamageKind.Slashing)
                 }.WithMainTrait(TenguGaleBlade);
             });
+            ModManager.RegisterNewItemIntoTheShop("nodachi", (ItemName name) =>
+            {
+                // TODO: get unique icon for nodachi
+                return new Item(name, new ModdedIllustration("TenguAssets/katana.png"), "nodachi", level: 0, price: 6,
+                    [Trait.Weapon, Trait.Melee, Trait.Advanced, Trait.Sword, Trait.TwoHanded, Trait.DeadlyD12, Trait.Reach, Brace])
+                {
+                    WeaponProperties = new WeaponProperties("1d8", DamageKind.Slashing)
+                }.WithMainTrait(Nodachi).ImplementBrace();
+            });
         }
+        public static Trait Brace = ModManager.RegisterTrait("Brace",
+            new TraitProperties("Brace", true, "A brace weapon is effective at damaging moving opponents. You gain the {i}Brace Your Weapon{/i} action, which allows you to immediately end your turn in exchange for an extra 2 precision damage per weapon die on reaction Strikes."));
 #if !DAWNSBURY_V2
-        // TODO: add the Dual-Handed Assault feat, which gives actual purpose to Two-Hand weapons
         public static Trait TwoHandD10 = ModManager.RegisterTrait("Two-Hand 1d10",
             new TraitProperties("Two-Hand 1d10", true,
                 "This weapon can be wielded with two hands to change its weapon damage die to the indicated value. This change applies to all the weapon's damage dice."));
@@ -113,7 +133,7 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
         // Produce a CombatAction for the given Item, which changes the item to its two-handed form.
         private static CombatAction SwapToTwoHands(Creature owner, Item item, int diceSize)
         {
-            bool lastActionWasToDraw = owner.Actions.ActionHistoryThisTurn.Count() != 0 && owner.Actions.ActionHistoryThisTurn.Last().Name == $"Draw {item.Name}";
+            bool lastActionWasToDraw = owner.Actions.ActionHistoryThisTurn.Count != 0 && owner.Actions.ActionHistoryThisTurn.Last().Name == $"Draw {item.Name}";
             return new CombatAction(owner, ChangeGripArt, $"Change Grip ({item.Name})", [Trait.Interact, Trait.Manipulate],
                 "You Interact to put another hand on the weapon, increasing its weapon damage die to the value indicated in the Two-Hand trait. You must have a free hand.\n\n{b}Special{/b} If your last action was to draw the weapon, you can Change Grip to wield it two-handed as a free action.",
                 Target.Self().WithAdditionalRestriction((Creature self) =>
@@ -139,5 +159,37 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
                 }).WithActionCost(0).WithShortDescription("Wield your weapon one-handed, at the expense of reduced damage.");
         }
 #endif
+        private static Item ImplementBrace(this Item item)
+        {
+            // TODO: spend 1 action to gain extra precision damage of (2*diceCount) to damage on attacks of opportunity
+            //       if you dont have AoO or stand still or equivalent, then its 2 actions and you get AoO temporarily
+            item.ProvidesItemAction = (Creature cr, Item self) =>  new ActionPossibility(BraceYourWeapon(cr, self));
+            return item;
+        }
+
+        private static CombatAction BraceYourWeapon(Creature owner, Item item)
+        {
+            int extraDamage = item.WeaponProperties.DamageDieCount * 2;
+            string damageString = S.HeightenedVariable(extraDamage, 2);
+            return new CombatAction(owner, ChangeGripArt, $"Brace Your Weapon", [Trait.Concentrate],
+                "{i}You ready your weapon to hit unattentive foes where it really hurts.{/i}\n\nYour turn ends immediately when you use this action. Until the start of your next turn, Strikes you make as part of a reaction deal an additional 2 precision damage per weapon damage die (total " + damageString + " damage).",
+                Target.Self()).WithEffectOnSelf((Creature self) =>
+                {
+                    self.AddQEffect(new QEffect("Weapon braced", $"Reaction Strikes deal {damageString} extra precision damage until the start of your next turn.")
+                    {
+                        YouDealDamageWithStrike = (QEffect self, CombatAction action, DiceFormula diceFormula, Creature defender) =>
+                        {
+                            if (defender.IsImmuneTo(Trait.PrecisionDamage)) return diceFormula;
+                            return diceFormula.Add(DiceFormula.FromText(extraDamage.ToString(), "Weapon braced"));
+                        },
+                        ExpiresAt = ExpirationCondition.ExpiresAtStartOfYourTurn,
+                        Illustration = ChangeGripArt
+                    });
+                    // end turn immediately
+                    self.Actions.ActionsLeft = 0;
+                    self.Actions.UsedQuickenedAction = true;
+                    self.Actions.WishesToEndTurn = true;
+                }).WithActionCost(1).WithShortDescription($"End your turn immediately, then deal {damageString} extra damage on reaction Strikes until the start of your next turn.");
+        }
     }
 }
