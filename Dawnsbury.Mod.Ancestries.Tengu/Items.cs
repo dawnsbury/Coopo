@@ -29,6 +29,7 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
         static public readonly Trait Wakizashi = ModManager.RegisterTrait("Wakizashi", new TraitProperties("Wakizashi", false));
         static public readonly Trait TenguGaleBlade = ModManager.RegisterTrait("TenguGaleBlade", new TraitProperties("Tengu Gale Blade", false));
         static public readonly Trait Nodachi = ModManager.RegisterTrait("Nodachi", new TraitProperties("Nodachi", false));
+        static public readonly Trait BastardSword = ModManager.RegisterTrait("BastardSword", new TraitProperties("Bastard Sword", false));
 
         static public readonly Illustration ChangeGripArt = new ModdedIllustration("TenguAssets/changeGrip.png");
 
@@ -89,12 +90,19 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
             });
             ModManager.RegisterNewItemIntoTheShop("nodachi", (ItemName name) =>
             {
-                // TODO: get unique icon for nodachi
-                return new Item(name, new ModdedIllustration("TenguAssets/katana.png"), "nodachi", level: 0, price: 6,
+                return new Item(name, new ModdedIllustration("TenguAssets/nodachi.png"), "nodachi", level: 0, price: 6,
                     [Trait.Weapon, Trait.Melee, Trait.Advanced, Trait.Sword, Trait.TwoHanded, Trait.DeadlyD12, Trait.Reach, Brace])
                 {
                     WeaponProperties = new WeaponProperties("1d8", DamageKind.Slashing)
                 }.WithMainTrait(Nodachi).ImplementBrace();
+            });
+            ModManager.RegisterNewItemIntoTheShop("bastard sword", (ItemName name) =>
+            {
+                return new Item(name, new ModdedIllustration("TenguAssets/bastardSword.png"), "bastard sword", level: 0, price: 4,
+                    [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, TwoHandD12])
+                {
+                    WeaponProperties = new WeaponProperties("1d8", DamageKind.Slashing)
+                }.WithMainTrait(BastardSword).ImplementTwoHand(8, 12);
             });
         }
         public static Trait Brace = ModManager.RegisterTrait("Brace",
@@ -103,6 +111,33 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
         public static Trait TwoHandD10 = ModManager.RegisterTrait("Two-Hand 1d10",
             new TraitProperties("Two-Hand 1d10", true,
                 "This weapon can be wielded with two hands to change its weapon damage die to the indicated value. This change applies to all the weapon's damage dice."));
+        public static Trait TwoHandD12 = ModManager.RegisterTrait("Two-Hand 1d12",
+            new TraitProperties("Two-Hand 1d12", true,
+                "This weapon can be wielded with two hands to change its weapon damage die to the indicated value. This change applies to all the weapon's damage dice."));
+
+        public static bool WeaponHasTwoHand(Item weapon, out Dice d)
+        {
+            if (weapon.HasTrait(TwoHandD10))
+            {
+                d = Dice.D10;
+                return true;
+            }
+            if (weapon.HasTrait(TwoHandD12))
+            {
+                d = Dice.D12;
+                return true;
+            }
+            else
+            {
+                d = Dice.D1;
+                return false;
+            }
+        }
+
+        public static bool WeaponHasTwoHand(Item weapon)
+        {
+            return WeaponHasTwoHand(weapon, out _);
+        }
 
         // extension method that implements the functionality of Two-Hand on a weapon. Doesn't add the trait - do that yourself.
         private static Item ImplementTwoHand(this Item item, int baseDamageDiceSize, int upgradedDamageDiceSize)
@@ -161,8 +196,6 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
 #endif
         private static Item ImplementBrace(this Item item)
         {
-            // TODO: spend 1 action to gain extra precision damage of (2*diceCount) to damage on attacks of opportunity
-            //       if you dont have AoO or stand still or equivalent, then its 2 actions and you get AoO temporarily
             item.ProvidesItemAction = (Creature cr, Item self) =>  new ActionPossibility(BraceYourWeapon(cr, self));
             return item;
         }

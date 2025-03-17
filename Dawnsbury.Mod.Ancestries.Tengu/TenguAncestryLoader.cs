@@ -32,14 +32,11 @@ namespace Dawnsbury.Mods.Ancestries.Tengu;
 
 // TODO:
 // * add dual-handed assault and the bastard sword (cause now this has become the tengu + two-hand mod)
-// * add the nodachi, that shit is swag
 // * make sure every prerequisite IN EVERY MOD is given in the text and not just in the code.
 public static class TenguAncestryLoader
 {
     public static readonly Trait TenguTrait = ModManager.RegisterTrait("Tengu", new TraitProperties("Tengu", true) { IsAncestryTrait = true });
     public static readonly Trait TenguWeaponFamiliaritySwordChoiceTrait = ModManager.RegisterTrait("TenguWeaponFamiliaritySwordChoiceTrait", new TraitProperties("TWFCT", false));
-
-    public static readonly List<Trait> familiarWeapons = [Items.Katana, Items.Khakkara, Items.TempleSword, Items.Wakizashi, Items.TenguGaleBlade];
 
     public static readonly SpellId IgnitionSpellId = ModManager.RegisterNewSpell("Tengu:Ignition", 0, (spellId, caster, level, inCombat, spellInfo) =>
     {
@@ -95,8 +92,7 @@ public static class TenguAncestryLoader
         Items.RegisterItems();
 
         AddFeats(GetAncestryFeats());
-        //TODO: carry on with this when Petr adds the necessary thing for changing weapon damage dice
-        /*
+
         ModManager.AddFeat(new TrueFeat(ModManager.RegisterFeatName("Dual-Handed Assault"),
             4,
             "You snap your free hand over to grip your weapon just long enough to add momentum and deliver a more powerful blow to your opponent.",
@@ -104,23 +100,50 @@ public static class TenguAncestryLoader
             [Trait.Fighter, Trait.Flourish]).WithActionCost(1)
             .WithPermanentQEffect("You quickly grip your one-handed weapon with both hands to make a stronger attack.", (QEffect self) =>
             {
+                string name = "Dual-Handed Assault";
                 self.ProvideStrikeModifier = (Item weapon) =>
                 {
-                    StrikeModifiers strikeModifiers = new StrikeModifiers()
-                    {
-                        IncreaseWeaponDieByOneStep = true, // want to do this once more
+                    if (!self.Owner.HasOneWeaponAndFist) return null;
+                    if (!weapon.HasTrait(Trait.Melee)) return null;
+                    if (weapon.HasTrait(Trait.Unarmed)) return null;
+                    // for whatever reason, OverrideItemDamageDie is only checked when the Strike action is created, not when it's used. therefore, we add it to the feat's effect just so that the strike can grab it, then remove it.
+                    self.OverrideItemDamageDie = (QEffect qf, Item weapon, StrikeModifiers strikeModifiers) =>
+                        {
+                            //if (weapon.HasTrait(Items.TwoHandD10)) return Dice.D10;
+                            //if (weapon.HasTrait(Items.TwoHandD12)) return Dice.D12;
+                            if (Items.WeaponHasTwoHand(weapon, out Dice d)) return d;
+                            else
+                            {
+                                int startingSize = weapon.WeaponProperties.DamageDieSize;
+                                return (Dice)DamageDiceUtils.IncreaseDamageDiceByOneStep(startingSize);
+                            }
+                        };
+                    // (also change the name temporarily to prevent an action symbol showing up in the dice breakdown)
+                    var unadulteratedName = self.Name;
+                    self.Name = name;
+                    CombatAction combatAction = self.Owner.CreateStrike(weapon);
+                    // undo our mischevious changes
+                    self.OverrideItemDamageDie = null;
+                    self.Name = unadulteratedName;
 
-                    };
-                    CombatAction combatAction = self.Owner.CreateStrike(weapon, -1, strikeModifiers);
-                    combatAction.Name = "Dual-Handed Assault";
+                    combatAction.Name = name;
                     combatAction.Illustration = new SideBySideIllustration(combatAction.Illustration, Items.ChangeGripArt);
                     combatAction.ActionCost = 1;
-                    combatAction.Traits.AddRange([Trait.Fighter, Trait.Flourish]);
+                    combatAction.Traits.AddRange([Trait.Fighter, Trait.Flourish, Trait.Basic]);
+                    combatAction.Description = StrikeRules.CreateBasicStrikeDescription2(combatAction.StrikeModifiers, weaponDieIncreased: true, additionalAftertext: "You resume gripping the weapon with only one hand. This doesn't end any stance or effect that requires you to have one hand free.", additionalAttackRollText: "You quickly switch your grip during the Strike in order to make the attack with two hands.");
 
                     return combatAction;
                 };
+                self.BonusToDamage = (QEffect self, CombatAction action, Creature defender) =>
+                {
+                    Item? weapon = self.Owner.PrimaryWeapon;
+                    //if (action.Name == name && weapon != null &&
+                    //    (weapon.HasTrait(Items.TwoHandD10) || weapon.HasTrait(Items.TwoHandD12)))
+                    if (action.Name == name && weapon != null && Items.WeaponHasTwoHand(weapon))
+                        return new Bonus(weapon.WeaponProperties.DamageDieCount, BonusType.Circumstance, "Dual-Handed Assault", true);
+                    else return null;
+                };
             }));
-        */
     }
 
     static void AddFeats(IEnumerable<Feat> feats)
@@ -233,29 +256,36 @@ public static class TenguAncestryLoader
                 calculatedSheet.SetProficiency(Trait.Spell, Proficiency.Trained);
             });
         // Tengu Weapon Familiarity and Subfeats
+        List<Trait> familiarWeapons = [Items.Katana, Items.Khakkara, Items.TempleSword, Items.Wakizashi, Items.TenguGaleBlade, Trait.Sword];
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Tengu Weapon Familiarity"),
             1,
             "You have eclectic experience with all sorts of weapons.",
-            "You have familiarity with all weapons with the tengu trait, plus the katana, khakkara, temple sword, and wakizashi. For the purpose of proficiency, you treat any of these that are martial weapons as simple weapons and any that are advanced weapons as martial weapons.\n\nIn addition, you may choose another weapon of your choice from the sword group: You are also familiar with this weapon, and gain the same benefits.\n\nAt 5th level, whenever you get a critical hit with one of these weapons, you get its {tooltip:criteffect}critical specialization effect{/}.",
+            "You have familiarity with all weapons with the tengu trait, all weapons in the sword group, plus the katana, khakkara, temple sword, and wakizashi. For the purpose of proficiency, you treat any of these that are martial weapons as simple weapons and any that are advanced weapons as martial weapons.\n\nAt 5th level, whenever you get a critical hit with one of these weapons, you get its {tooltip:criteffect}critical specialization effect{/}.",
             [TenguTrait]
-            ).WithOnSheet((calculatedSheet) =>
+            ).WithOnSheet((sheet) =>
             {
+                // Increase proficiency for all groups listed (there's no need to do it for the actual tengu trait because there's only one tengu weapon and we listed that)
                 foreach (Trait t in familiarWeapons)
                 {
-                    ApplyRemasterProficiencyUpgrade(calculatedSheet, t);
+                    // legacy/remaster compatibility: all remaster classes have simple prof, but some legacy ones (like wizard) don't.
+                    // for these classes, grant training instead of an adjustment, as if they had simple proficiency.
+                    // (they suck too bad to get a proficiency increase before level 8 so it doesn't matter beyond Trained)
+                    if (sheet.GetProficiency(Trait.Simple) == Proficiency.Untrained)
+                    {
+                        sheet.Proficiencies.Set([t, Trait.Simple], Proficiency.Trained);
+                        sheet.Proficiencies.Set([t, Trait.Martial], Proficiency.Trained);
+                    }
+                    else
+                    {
+                        sheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(t) && traits.Contains(Trait.Martial), Trait.Simple);
+                        sheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(t) && traits.Contains(Trait.Advanced), Trait.Martial);
+                    }
                 }
-                // make the weapon choice subfeats now rather than at mod load, or else modded weapons aren't included
-                MakeTenguWeaponFamiliaritySubfeats();
-                calculatedSheet.AddSelectionOptionRightNow(
-                    new SingleFeatSelectionOption("TenguWeaponFamiliaritySwordChoice", "Tengu Weapon Familiarity", 1,
-                        feat => feat.HasTrait(TenguWeaponFamiliaritySwordChoiceTrait)
-                        ).WithIsOptional()
-                    );
             }).WithOnCreature((Creature cr) =>
             {
-                // grant crit spec with listed weapons at level 5
 #if !DAWNSBURY_V2
+                // grant crit spec with listed weapons at level 5
                 if (cr.Level < 5) return;
                 cr.AddQEffect(new QEffect()
                 {
@@ -473,77 +503,5 @@ public static class TenguAncestryLoader
                 await jumper.SingleTileMove(target.ChosenTile, action);
                 jumper.AddQEffect(new QEffect() { Id = SoaringFlightCooldown, ExpiresAt = ExpirationCondition.ExpiresAtStartOfYourTurn });
             }).WithActionId(ActionId.Leap);
-    }
-
-
-    static bool TenguWeaponFamiliaritySubfeatsAlreadyInitialised = false;
-    // This has to be done after mod loading, cause modded items aren't loaded yet
-    // TODO: the subfeat choice isn't sticking between loads. figure out the issue
-    static void MakeTenguWeaponFamiliaritySubfeats()
-    {
-        if (TenguWeaponFamiliaritySubfeatsAlreadyInitialised) return;
-        // quick hack to hide the roguelike mod's specific magic weapons, since they use a custom trait.
-        // TODO: remove this hack when the roguelike mod starts using the basegame version of the trait
-        bool roguelikeModInstalled = ModManager.TryParse("RL_CannotHavePropertyRune", out Trait roguelikeSMW);
-
-        // get all base types of sword which are not accounted for already by tengu's familiar weapons
-        IEnumerable<Item> items = from item in Core.Mechanics.Treasure.Items.GetItemTemplates()
-                                  where item.MainTrait != Trait.None
-                                    && item.HasTrait(Trait.Sword)
-                                    && !familiarWeapons.Where(weaponTrait => item.HasTrait(weaponTrait)).Any()
-                                    && !item.HasTrait(Trait.SpecificMagicWeapon)
-                                    && !(roguelikeModInstalled && item.HasTrait(roguelikeSMW))
-                                  orderby item.Name
-                                  select item;
-
-        // split the weapons into two groups in the list (cause it looks nice)
-        FeatGroup advancedWeapons = new FeatGroup("Advanced weapons", 1);
-        FeatGroup martialWeapons = new FeatGroup("Martial weapons", 2);
-        foreach (Item item in items)
-        {
-            if (ModManager.TryParse<FeatName>($"TenguWeaponFamiliarity:{item.Name}", out _)) continue; //don't make duplicates
-            Feat feat = new Feat(
-                ModManager.RegisterFeatName($"TenguWeaponFamiliarity:{item.Name}", item.Name.Capitalize()),
-                $"You have experience with {item.Name}s.",
-                $"For the purpose of proficiency, you treat {item.Name}s as {(item.HasTrait(Trait.Advanced) ? "martial" : "simple")} weapons.",
-                traits: [TenguWeaponFamiliaritySwordChoiceTrait],
-                subfeats: null).WithIllustration(item.Illustration).WithOnSheet((calculatedSheet) =>
-                {
-                    ApplyRemasterProficiencyUpgrade(calculatedSheet, item.MainTrait);
-                }).WithOnCreature((Creature cr) =>
-                {
-                    // grant crit spec with chosen weapon at level 5
-#if !DAWNSBURY_V2
-                    if (cr.Level < 5) return;
-                    cr.AddQEffect(new QEffect()
-                    {
-                        YouHaveCriticalSpecialization = (QEffect self, Item weapon, CombatAction _, Creature _) => weapon.HasTrait(weapon.MainTrait)
-                    });
-#endif
-                });
-            feat.FeatGroup = item.HasTrait(Trait.Advanced) ? advancedWeapons : martialWeapons;
-            ModManager.AddFeat(feat);
-        }
-        TenguWeaponFamiliaritySubfeatsAlreadyInitialised = true;
-    }
-
-    // Applies the remaster style weapon proficiency upgrade, which uses simple prof for martial and martial prof for advanced.
-    // In addition, grants Training for characters that are untrained in simple weapons. This is for legacy compatibility; in remaster,
-    // all classes are assumed to have simple proficiency, which makes this kind of adjustment not work on classes like legacy wizard.
-    private static void ApplyRemasterProficiencyUpgrade(CalculatedCharacterSheetValues sheet, Trait upgradeTrait)
-    {
-        // legacy/remaster compatibility: all remaster classes have simple prof, but some legacy ones (like wizard) don't.
-        // for these classes, grant training instead of an adjustment, as if they had simple proficiency.
-        // (they suck too bad to get a proficiency increase before level 8 so it doesn't matter beyond Trained)
-        if (sheet.GetProficiency(Trait.Simple) == Proficiency.Untrained)
-        {
-            sheet.Proficiencies.Set([upgradeTrait, Trait.Simple], Proficiency.Trained);
-            sheet.Proficiencies.Set([upgradeTrait, Trait.Martial], Proficiency.Trained);
-        }
-        else
-        {
-            sheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(upgradeTrait) && traits.Contains(Trait.Martial), Trait.Simple);
-            sheet.Proficiencies.AddProficiencyAdjustment(traits => traits.Contains(upgradeTrait) && traits.Contains(Trait.Advanced), Trait.Martial);
-        }
     }
 }
