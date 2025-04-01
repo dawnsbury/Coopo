@@ -153,6 +153,7 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
                         if (self.Owner.HasFreeHand &&
                             await self.Owner.AskForConfirmation(item.Illustration, $"How is {self.Owner.Name} holding their {item.Name} at the start of combat?", "Two-handed", "One-handed"))
                         {
+                            if (item.WeaponProperties == null) return;
                             item.WeaponProperties.DamageDieSize = upgradedDamageDiceSize;
                             item.Traits.Add(Trait.TwoHanded);
                         }
@@ -177,6 +178,7 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
                     else return null;
                 })).WithEffectOnSelf((Creature self) =>
                 {
+                    if (item.WeaponProperties == null) return;
                     item.WeaponProperties.DamageDieSize = diceSize;
                     item.Traits.Add(Trait.TwoHanded);
                 }).WithActionCost(lastActionWasToDraw ? 0 : 1).WithShortDescription("Wield your weapon two-handed to deal more damage.");
@@ -185,10 +187,11 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
         // Produce a CombatAction for the given Item, which changes the item to its one-handed form.
         private static CombatAction SwapToOneHand(Creature owner, Item item, int diceSize)
         {
-            return new CombatAction(owner, ChangeGripArt, $"Change Grip ({item.Name})", [Trait.Interact, Trait.Manipulate],
+            return new CombatAction(owner, ChangeGripArt, $"Change Grip ({item.Name})", [Trait.Interact, Trait.Manipulate, Trait.DoesNotProvoke], // releasing technically has the manipulate trait, but doesnt prompt AoOs.
                 "You Release a hand from the weapon, decreasing its weapon damage die to its usual value.",
                 Target.Self()).WithEffectOnSelf((Creature self) =>
                 {
+                    if (item.WeaponProperties == null) return;
                     item.WeaponProperties.DamageDieSize = diceSize;
                     item.Traits.Remove(Trait.TwoHanded);
                 }).WithActionCost(0).WithShortDescription("Wield your weapon one-handed, at the expense of reduced damage.");
@@ -196,12 +199,15 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
 #endif
         private static Item ImplementBrace(this Item item)
         {
-            item.ProvidesItemAction = (Creature cr, Item self) =>  new ActionPossibility(BraceYourWeapon(cr, self));
+            // warning doesnt matter, ProvidesItemAction has incorrect nullability
+            item.ProvidesItemAction = (Creature cr, Item self) => BraceYourWeapon(cr, self);
             return item;
         }
 
-        private static CombatAction BraceYourWeapon(Creature owner, Item item)
+        private static ActionPossibility? BraceYourWeapon(Creature owner, Item item)
         {
+            if (!owner.HasEffect(QEffectId.AttackOfOpportunity)) return null;
+            if (item.WeaponProperties == null) return null;
             int extraDamage = item.WeaponProperties.DamageDieCount * 2;
             string damageString = S.HeightenedVariable(extraDamage, 2);
             return new CombatAction(owner, ChangeGripArt, $"Brace Your Weapon", [Trait.Concentrate],

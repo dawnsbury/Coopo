@@ -27,12 +27,12 @@ using Dawnsbury.Core.Mechanics.Rules;
 using Dawnsbury.Core.CharacterBuilder.FeatsDb.Common;
 using Dawnsbury.Display;
 using Dawnsbury.Core.CharacterBuilder;
+using System.Reflection;
 
 namespace Dawnsbury.Mods.Ancestries.Tengu;
 
-// TODO:
-// * add dual-handed assault and the bastard sword (cause now this has become the tengu + two-hand mod)
-// * make sure every prerequisite IN EVERY MOD is given in the text and not just in the code.
+// TODO: 
+// * add an "unusual X" heritage to every ancestry that gives you 2 free boosts, like most of the basegame ones
 public static class TenguAncestryLoader
 {
     public static readonly Trait TenguTrait = ModManager.RegisterTrait("Tengu", new TraitProperties("Tengu", true) { IsAncestryTrait = true });
@@ -109,8 +109,6 @@ public static class TenguAncestryLoader
                     // for whatever reason, OverrideItemDamageDie is only checked when the Strike action is created, not when it's used. therefore, we add it to the feat's effect just so that the strike can grab it, then remove it.
                     self.OverrideItemDamageDie = (QEffect qf, Item weapon, StrikeModifiers strikeModifiers) =>
                         {
-                            //if (weapon.HasTrait(Items.TwoHandD10)) return Dice.D10;
-                            //if (weapon.HasTrait(Items.TwoHandD12)) return Dice.D12;
                             if (Items.WeaponHasTwoHand(weapon, out Dice d)) return d;
                             else
                             {
@@ -137,9 +135,8 @@ public static class TenguAncestryLoader
                 self.BonusToDamage = (QEffect self, CombatAction action, Creature defender) =>
                 {
                     Item? weapon = self.Owner.PrimaryWeapon;
-                    //if (action.Name == name && weapon != null &&
-                    //    (weapon.HasTrait(Items.TwoHandD10) || weapon.HasTrait(Items.TwoHandD12)))
-                    if (action.Name == name && weapon != null && Items.WeaponHasTwoHand(weapon))
+                    if (weapon == null || weapon.WeaponProperties == null) return null;
+                    if (action.Name == name && Items.WeaponHasTwoHand(weapon))
                         return new Bonus(weapon.WeaponProperties.DamageDieCount, BonusType.Circumstance, "Dual-Handed Assault", true);
                     else return null;
                 };
@@ -306,6 +303,62 @@ public static class TenguAncestryLoader
             });
         // Magpie Snatch
         // concept: 1 action to pick up 2 items. Pretty powerful, but also the only time you're ever gonna do that in this game is when you go down
+        yield return new TrueFeat(
+            ModManager.RegisterFeatName("Magpie Snatch"),
+            5,
+            "You quickly snatch whatever shiny items catch your eye.",
+            "{b}Requirements{/b} Both of your hands are empty\n\nYou Interact to pick up as many items as you can hold, up to two.",
+            [TenguTrait]
+            ).WithActionCost(1).WithPermanentQEffect(qf =>
+            {
+                qf.ProvideActionIntoPossibilitySection = (QEffect self, PossibilitySection section) =>
+                {
+                    if (section.PossibilitySectionId != PossibilitySectionId.ItemActions) return null;
+                    if (self.Owner.HeldItems.Count != 0) return null;
+                    // TODO: check that there are items on the floor to pick up before providing action (or add as additional restriction)
+                    return new ActionPossibility(
+                        new CombatAction(self.Owner, IllustrationName.PickUp, "Magpie Snatch", [Trait.Manipulate, Trait.Interact],
+                        "{i}You quickly snatch whatever shiny items catch your eye.{/i}\n\n{b}Requirements{/b} Both of your hands are empty\n\nYou Interact to pick up as many items as you can hold, up to two.",
+                        Target.Self().WithAdditionalRestriction(cr => cr.Occupies.DroppedItems.Count == 0 ? "There is nothing for you to pick up." : null)
+                        ).WithEffectOnSelf(async cr =>
+                        {
+                            List<Item> floorItems = cr.Occupies.DroppedItems;
+                            int handsRequired = floorItems.Sum(item => item.TwoHanded ? 2 : 1);
+                            if (handsRequired <= 2)
+                            {
+                                foreach (Item item in floorItems)
+                                {
+                                    cr.AddHeldItem(item);
+                                }
+                                floorItems.Clear();
+                            }
+                            else
+                            {
+                                // pick up first item
+                                List<string> choices = floorItems.Select(item => item.Name).ToList();
+                                var firstChoice = await cr.AskForChoiceAmongButtons(IllustrationName.PickUp, "Magpie Snatch — What item do you pick up first?", [.. choices]);
+                                Item? firstItem = floorItems.FirstOrDefault(item => item.Name == firstChoice.Text);
+                                if (firstItem == null)
+                                    return;
+                                cr.AddHeldItem(firstItem);
+                                floorItems.Remove(firstItem);
+                                cr.Battle.Log($"\t{cr.Name} nabs {firstItem.Name}.");
+                                if (firstItem.TwoHanded)
+                                    return;
+
+                                // pick up second item
+                                choices = floorItems.Where(item => !item.TwoHanded).Select(item => item.Name).ToList();
+                                var secondChoice = await cr.AskForChoiceAmongButtons(IllustrationName.PickUp, "Magpie Snatch — What item do you pick up second?", [.. choices]);
+                                Item? secondItem = floorItems.FirstOrDefault(item => item.Name == secondChoice.Text);
+                                if (secondItem == null)
+                                    return;
+                                cr.AddHeldItem(secondItem);
+                                floorItems.Remove(secondItem);
+                                cr.Battle.Log($"\t{cr.Name} nabs {secondItem.Name}.");
+                            }
+                        }));
+                };
+            });
 
         // Soaring Flight
         yield return new TrueFeat(
