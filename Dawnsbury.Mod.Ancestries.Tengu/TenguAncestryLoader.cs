@@ -319,42 +319,53 @@ public static class TenguAncestryLoader
                     return new ActionPossibility(
                         new CombatAction(self.Owner, IllustrationName.PickUp, "Magpie Snatch", [Trait.Manipulate, Trait.Interact],
                         "{i}You quickly snatch whatever shiny items catch your eye.{/i}\n\n{b}Requirements{/b} Both of your hands are empty\n\nYou Interact to pick up as many items as you can hold, up to two.",
-                        Target.Self().WithAdditionalRestriction(cr => cr.Occupies.DroppedItems.Count == 0 ? "There is nothing for you to pick up." : null)
+                        Target.Self().WithAdditionalRestriction(cr => cr.Occupies.DroppedItems.Count == 0 &&
+                            cr.Occupies.Neighbours.All(edge => edge.Tile.DroppedItems.Count == 0) ? "There is nothing for you to pick up." : null)
                         ).WithEffectOnSelf(async cr =>
                         {
-                            List<Item> floorItems = cr.Occupies.DroppedItems;
-                            int handsRequired = floorItems.Sum(item => item.TwoHanded ? 2 : 1);
-                            if (handsRequired <= 2)
-                            {
-                                foreach (Item item in floorItems)
+                            // enumerate all items on the occupied tile plus neighbours (you are allowed to pick up items in adjacent tiles)
+                            List<(Item item, Action pickUp)> floorItems = [];
+                            floorItems.AddRange(cr.Occupies.DroppedItems.Select<Item, (Item, Action)>(item => (item, () =>
                                 {
                                     cr.AddHeldItem(item);
+                                    cr.Occupies.DroppedItems.Remove(item);
+                                    floorItems.RemoveFirst(tuple => tuple.item == item);
+                                })));
+                            foreach (Edge edge in cr.Occupies.Neighbours)
+                            {
+                                floorItems.AddRange(edge.Tile.DroppedItems.Select<Item, (Item, Action)>(item => (item, () =>
+                                {
+                                    cr.AddHeldItem(item);
+                                    edge.Tile.DroppedItems.Remove(item);
+                                    floorItems.RemoveFirst(tuple => tuple.item == item);
                                 }
-                                floorItems.Clear();
+                                )));
+                            }
+                            int handsRequired = floorItems.Sum(tuple => tuple.item.TwoHanded ? 2 : 1);
+                            if (handsRequired <= 2)
+                            {
+                                foreach ((Item item, Action pickUp) in floorItems)
+                                {
+                                    pickUp();
+                                }
                             }
                             else
                             {
                                 // pick up first item
-                                List<string> choices = floorItems.Select(item => item.Name).ToList();
+                                List<string> choices = floorItems.Select(tuple => tuple.item.Name).ToList();
                                 var firstChoice = await cr.AskForChoiceAmongButtons(IllustrationName.PickUp, "Magpie Snatch — What item do you pick up first?", [.. choices]);
-                                Item? firstItem = floorItems.FirstOrDefault(item => item.Name == firstChoice.Text);
-                                if (firstItem == null)
-                                    return;
-                                cr.AddHeldItem(firstItem);
-                                floorItems.Remove(firstItem);
-                                cr.Battle.Log($"\t{cr.Name} nabs {firstItem.Name}.");
+                                (Item firstItem, Action pickUpFirstItem) = floorItems.FirstOrDefault(tuple => tuple.item.Name == firstChoice.Text);
+                                pickUpFirstItem();
+                                cr.Battle.Log($"\t{cr.Name} nabs {{b}}{firstItem.Name}{{/b}}.");
+                                // hands are full - stop now
                                 if (firstItem.TwoHanded)
                                     return;
-
                                 // pick up second item
-                                choices = floorItems.Where(item => !item.TwoHanded).Select(item => item.Name).ToList();
+                                choices = floorItems.Where(tuple => !tuple.item.TwoHanded).Select(tuple => tuple.item.Name).ToList();
                                 var secondChoice = await cr.AskForChoiceAmongButtons(IllustrationName.PickUp, "Magpie Snatch — What item do you pick up second?", [.. choices]);
-                                Item? secondItem = floorItems.FirstOrDefault(item => item.Name == secondChoice.Text);
-                                if (secondItem == null)
-                                    return;
-                                cr.AddHeldItem(secondItem);
-                                floorItems.Remove(secondItem);
-                                cr.Battle.Log($"\t{cr.Name} nabs {secondItem.Name}.");
+                                (Item secondItem, Action pickUpSecondItem) = floorItems.FirstOrDefault(tuple => tuple.item.Name == secondChoice.Text);
+                                pickUpSecondItem();
+                                cr.Battle.Log($"\t{cr.Name} nabs {{b}}{secondItem.Name}{{/b}}.");
                             }
                         }));
                 };
