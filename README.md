@@ -21,7 +21,7 @@ Some mods for Dawnsbury Days that add things I think are cool, primarily Ancestr
 * Tengu Mod
     * Dogtooth Tengu Heritage
     * Jinxed Tengu Heritage
-    * Mountainkeeper Tengu Heritage
+    * Mountainkeeper Tengu Heritage (and the Vitality Lash cantrip)
     * Skyborn Tengu Heritage
     * Stormtossed Tengu Heritage
     * Taloned Tengu Heritage

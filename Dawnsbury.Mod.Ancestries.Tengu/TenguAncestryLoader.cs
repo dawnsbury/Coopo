@@ -28,6 +28,7 @@ using Dawnsbury.Core.CharacterBuilder.FeatsDb.Common;
 using Dawnsbury.Display;
 using Dawnsbury.Core.CharacterBuilder;
 using System.Reflection;
+using Dawnsbury.Core.Mechanics.Targeting.TargetingRequirements;
 
 namespace Dawnsbury.Mods.Ancestries.Tengu;
 
@@ -38,7 +39,7 @@ namespace Dawnsbury.Mods.Ancestries.Tengu;
 public static class TenguAncestryLoader
 {
     public static readonly Trait TenguTrait = ModManager.RegisterTrait("Tengu", new TraitProperties("Tengu", true) { IsAncestryTrait = true });
-    public static readonly Trait TenguWeaponFamiliaritySwordChoiceTrait = ModManager.RegisterTrait("TenguWeaponFamiliaritySwordChoiceTrait", new TraitProperties("TWFCT", false));
+    private static readonly Trait VitalityTrait = ModManager.RegisterTrait("Vitality");
 
     public static readonly SpellId IgnitionSpellId = ModManager.RegisterNewSpell("Tengu:Ignition", 0, (spellId, caster, level, inCombat, spellInfo) =>
     {
@@ -53,6 +54,24 @@ public static class TenguAncestryLoader
                 await CommonSpellEffects.DealAttackRollDamage(spell, caster, target, result, (spell.SpellLevel + 1) + dieSize, DamageKind.Fire);
                 if (result == CheckResult.CriticalSuccess)
                     target.AddQEffect(QEffect.PersistentDamage(spell.SpellLevel + dieSize, DamageKind.Fire));
+            });
+    });
+
+    public static readonly SpellId VitalityLash = ModManager.RegisterNewSpell("Tengu:VitalityLash", 0, (spellId, caster, level, inCombat, spellInfo) =>
+    {
+        return Spells.CreateModern(IllustrationName.DisruptUndead, "Vitality Lash",
+            [Trait.Cantrip, Trait.Concentrate, Trait.Manipulate, VitalityTrait, Trait.Divine, Trait.Primal, Trait.SpellCannotBeChosenInCharacterBuilder],
+            "You demolish the target's corrupted essence with vital energy.",
+            "Deal " + S.HeightenedVariable(level + 1, 2) + "d6 vitality damage. If the target critically fails its basic Fortitude save, it's also enfeebled 1 for 1 round.",
+            Target.Ranged(6).WithAdditionalConditionOnTargetCreature((caster, target) => !target.HasTrait(Trait.Undead) ? Usability.CommonReasons.TargetIsNotUndead : Usability.Usable),
+            level,
+            SpellSavingThrow.Basic(Defense.Fortitude)).WithSoundEffect(SfxName.DivineLance).WithHeighteningOfDamageEveryLevel(level, 1, inCombat, "1d6")
+            .WithEffectOnEachTarget(async (spell, caster, target, checkResult) =>
+            {
+                await CommonSpellEffects.DealBasicDamage(spell, caster, target, checkResult, (level + 1).ToString() + "d6", DamageKind.Positive);
+                if (checkResult != CheckResult.CriticalFailure)
+                    return;
+                target.AddQEffect(QEffect.Enfeebled(1).WithExpirationAtStartOfSourcesTurn(caster, 1));
             });
     });
 
@@ -433,15 +452,14 @@ public static class TenguAncestryLoader
                     }
                 });
             });
-        Spell disruptUndead = AllSpells.CreateModernSpellTemplate(SpellId.DisruptUndead, TenguTrait);
-        Trait MountainkeeperTraditionSelectionFeat = ModManager.RegisterTrait("Mountainkeeper Tradition Selection Feat", new TraitProperties("", false));
+        Spell vitalityLash = AllSpells.CreateModernSpellTemplate(VitalityLash, TenguTrait);
         yield return new HeritageSelectionFeat(
             ModManager.RegisterFeatName("Mountainkeeper Tengu"),
             "You come from a line of tengu ascetics, leaving you with a link to the spirits of the world.",
-            $"You can cast the {disruptUndead.ToSpellLink()} cantrip as a primal innate spell at will. Your spellcasting ability for this spell is Charisma."
+            $"You can cast the {vitalityLash.ToSpellLink()} cantrip as a primal innate spell at will. Your spellcasting ability for this spell is Charisma."
             ).WithOnCreature((Creature cr) =>
             {
-                cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TenguTrait, Ability.Charisma, Trait.Primal).WithSpells([disruptUndead.SpellId], cr.MaximumSpellRank);
+                cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TenguTrait, Ability.Charisma, Trait.Primal).WithSpells([vitalityLash.SpellId], cr.MaximumSpellRank);
             }).WithOnSheet((calculatedSheet) =>
             {
                 calculatedSheet.SetProficiency(Trait.Spell, Proficiency.Trained);
