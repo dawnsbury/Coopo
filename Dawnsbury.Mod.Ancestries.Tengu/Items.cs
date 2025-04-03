@@ -15,8 +15,6 @@ using Dawnsbury.Display.Text;
 using Dawnsbury.Modding;
 using System;
 
-// TODO: check the licensing on these weapons. I know that the nodachi was printed in the ORC Tian Xia Character Guide, so you need to reference that. everything else should be in PC2 cause Tengu references them.
-
 namespace Dawnsbury.Mods.Ancestries.Tengu
 {
     internal static class Items
@@ -35,8 +33,6 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
 
         public static void RegisterItems()
         {
-            // can't be bothered implementing two-hand in v2; just remove it in v2
-#if !DAWNSBURY_V2
             ModManager.RegisterNewItemIntoTheShop("katana", (ItemName name) =>
             {
                 return new Item(name, new ModdedIllustration("TenguAssets/katana.png"), "katana", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.DeadlyD8, TwoHandD10, Trait.VersatileP])
@@ -51,22 +47,6 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
                     WeaponProperties = new WeaponProperties("1d6", DamageKind.Bludgeoning)
                 }.WithMainTrait(Khakkara).ImplementTwoHand(6, 10);
             });
-#else
-            ModManager.RegisterNewItemIntoTheShop("katana", (ItemName name) =>
-            {
-                return new Item(name, new ModdedIllustration("TenguAssets/katana.png"), "katana", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.DeadlyD8, Trait.VersatileP])
-                {
-                    WeaponProperties = new WeaponProperties("1d6", DamageKind.Slashing)
-                }.WithMainTrait(Katana);
-            });
-            ModManager.RegisterNewItemIntoTheShop("khakkara", (ItemName name) =>
-            {
-                return new Item(name, new ModdedIllustration("TenguAssets/khakkara.png"), "khakkara", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Club, /*Trait.Monk,*/ Trait.VersatileP])
-                {
-                    WeaponProperties = new WeaponProperties("1d6", DamageKind.Bludgeoning)
-                }.WithMainTrait(Khakkara);
-            });
-#endif
             ModManager.RegisterNewItemIntoTheShop("temple sword", (ItemName name) =>
             {
                 return new Item(name, new ModdedIllustration("TenguAssets/templeSword.png"), "temple sword", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, /*Trait.Monk,*/ Trait.Trip])
@@ -107,7 +87,6 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
         }
         public static Trait Brace = ModManager.RegisterTrait("Brace",
             new TraitProperties("Brace", true, "A brace weapon is effective at damaging moving opponents. You gain the {i}Brace Your Weapon{/i} action, which allows you to immediately end your turn in exchange for an extra 2 precision damage per weapon die on reaction Strikes."));
-#if !DAWNSBURY_V2
         public static Trait TwoHandD10 = ModManager.RegisterTrait("Two-Hand 1d10",
             new TraitProperties("Two-Hand 1d10", true,
                 "This weapon can be wielded with two hands to change its weapon damage die to the indicated value. This change applies to all the weapon's damage dice."));
@@ -196,7 +175,6 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
                     item.Traits.Remove(Trait.TwoHanded);
                 }).WithActionCost(0).WithShortDescription("Wield your weapon one-handed, at the expense of reduced damage.");
         }
-#endif
         private static Item ImplementBrace(this Item item)
         {
             // warning doesnt matter, ProvidesItemAction has incorrect nullability

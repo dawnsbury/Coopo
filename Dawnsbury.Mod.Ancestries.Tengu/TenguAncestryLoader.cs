@@ -60,14 +60,10 @@ public static class TenguAncestryLoader
     public static void LoadMod()
     {
         // enable the debugger in debug mode, and assert that the right version of the game's DLL is being built against
-#if DEBUG || DEBUG_V2
+#if DEBUG
         Debugger.Launch();
 #endif
-#if DAWNSBURY_V2
-        ModManager.AssertV2();
-#else
         ModManager.AssertV3();
-#endif
 
         Feat TenguAncestry = new AncestrySelectionFeat(
             ModManager.RegisterFeatName("Tengu"),
@@ -181,11 +177,7 @@ public static class TenguAncestryLoader
                 {
                     ProvideActionIntoPossibilitySection = (QEffect self, PossibilitySection section) =>
                     {
-#if DAWNSBURY_V2
-                        PossibilitySectionId location = PossibilitySectionId.OtherManeuvers;
-#else
                         PossibilitySectionId location = PossibilitySectionId.Movement;
-#endif
                         if (section.PossibilitySectionId == location)
                         {
                             return new ActionPossibility(OneToedHop(cr));
@@ -213,8 +205,6 @@ public static class TenguAncestryLoader
                     }
                 });
             });
-        // Cannot be implemented in v2; RerollActiveRoll isn't present
-#if !DAWNSBURY_V2
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Squawk!", "Squawk! {icon:Reaction}"),
             1,
@@ -239,7 +229,6 @@ public static class TenguAncestryLoader
                     }
                 });
             });
-#endif
         Spell electricArc = AllSpells.CreateModernSpellTemplate(SpellId.ElectricArc, TenguTrait);
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Storm's Lash"),
@@ -283,14 +272,12 @@ public static class TenguAncestryLoader
                 }
             }).WithOnCreature((Creature cr) =>
             {
-#if !DAWNSBURY_V2
                 // grant crit spec with listed weapons at level 5
                 if (cr.Level < 5) return;
                 cr.AddQEffect(new QEffect()
                 {
                     YouHaveCriticalSpecialization = (QEffect self, Item weapon, CombatAction _, Creature _) => familiarWeapons.Any(trait => weapon.HasTrait(trait))
                 });
-#endif
             });
         // Uncanny Agility
         yield return new TrueFeat(
@@ -304,7 +291,6 @@ public static class TenguAncestryLoader
                 calculatedSheet.GrantFeat(FeatName.FeatherStep);
             });
         // Magpie Snatch
-        // concept: 1 action to pick up 2 items. Pretty powerful, but also the only time you're ever gonna do that in this game is when you go down
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Magpie Snatch"),
             5,
@@ -317,7 +303,6 @@ public static class TenguAncestryLoader
                 {
                     if (section.PossibilitySectionId != PossibilitySectionId.ItemActions) return null;
                     if (self.Owner.HeldItems.Count != 0) return null;
-                    // TODO: check that there are items on the floor to pick up before providing action (or add as additional restriction)
                     return new ActionPossibility(
                         new CombatAction(self.Owner, IllustrationName.PickUp, "Magpie Snatch", [Trait.Manipulate, Trait.Interact],
                         "{i}You quickly snatch whatever shiny items catch your eye.{/i}\n\n{b}Requirements{/b} Both of your hands are empty\n\nYou Interact to pick up as many items as you can hold, up to two.",
@@ -386,11 +371,7 @@ public static class TenguAncestryLoader
                 {
                     ProvideActionIntoPossibilitySection = (QEffect self, PossibilitySection section) =>
                     {
-#if DAWNSBURY_V2
-                        PossibilitySectionId location = PossibilitySectionId.OtherManeuvers;
-#else
                         PossibilitySectionId location = PossibilitySectionId.Movement;
-#endif
                         if (section.PossibilitySectionId == location)
                         {
                             return new ActionPossibility(SoaringFlight(cr));
@@ -421,15 +402,6 @@ public static class TenguAncestryLoader
             {
                 cr.AddQEffect(new QEffect("Jinxed Tengu", "When saving against curse effects, your successes are upgraded to critical successes. When you gain the doomed condition, make a DC17 flat check to reduce the gained value by 1.")
                 {
-#if DAWNSBURY_V2
-                    AdjustSavingThrowResult = (QEffect self, CombatAction action, CheckResult result) =>
-                    {
-                        if (action.HasTrait(Trait.Curse) && action.SavingThrow != null && action.SavingThrow.Defense.IsSavingThrow() && result == CheckResult.Success)
-                            return CheckResult.CriticalSuccess;
-                        else return result;
-                    }
-                    // Doomed effect only exists in v3, and AdjustSavingThrowCheckResult is not in v3
-#else
                     AdjustSavingThrowCheckResult = (QEffect self, Defense defense, CombatAction action, CheckResult result) =>
                     {
                         if (action.HasTrait(Trait.Curse) && defense.IsSavingThrow() && result == CheckResult.Success)
@@ -459,7 +431,6 @@ public static class TenguAncestryLoader
                             return applied;
                         }
                     }
-#endif
                 });
             });
         Spell disruptUndead = AllSpells.CreateModernSpellTemplate(SpellId.DisruptUndead, TenguTrait);
@@ -486,21 +457,12 @@ public static class TenguAncestryLoader
             {
                 cr.AddQEffect(new QEffect("Skyborn Tengu", "You have a +1 bonus to saves against air effects, and successful saves become critical successes.")
                 {
-#if DAWNSBURY_V2
-                    AdjustSavingThrowResult = (QEffect self, CombatAction action, CheckResult result) =>
-                    {
-                        if (action.HasTrait(Trait.Air) && action.SavingThrow != null && action.SavingThrow.Defense.IsSavingThrow() && result == CheckResult.Success)
-                            return CheckResult.CriticalSuccess;
-                        else return result;
-                    },
-#else
                     AdjustSavingThrowCheckResult = (QEffect self, Defense defense, CombatAction action, CheckResult result) =>
                     {
                         if (action.HasTrait(Trait.Air) && defense.IsSavingThrow() && result == CheckResult.Success)
                             return CheckResult.CriticalSuccess;
                         else return result;
                     },
-#endif
                     BonusToDefenses = (QEffect self, CombatAction? action, Defense defense) =>
                     {
                         if (!defense.IsSavingThrow()) return null;
