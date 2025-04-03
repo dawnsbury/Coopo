@@ -33,6 +33,8 @@ namespace Dawnsbury.Mods.Ancestries.Tengu;
 
 // TODO: 
 // * add an "unusual X" heritage to every ancestry that gives you 2 free boosts, like most of the basegame ones
+// * Finish up the big tengu update and release when the DLC releases?
+// * maybe make tengu weapon familiarity grant proficiency with the sword in your hand at the start of combat? proficiency with all swords is a little jank
 public static class TenguAncestryLoader
 {
     public static readonly Trait TenguTrait = ModManager.RegisterTrait("Tengu", new TraitProperties("Tengu", true) { IsAncestryTrait = true });

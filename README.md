@@ -2,23 +2,23 @@
 
 Some mods for Dawnsbury Days that add things I think are cool, primarily Ancestries. Currently adds:
 
-* Tanuki
-	* Even-tempered Heritage
-	* Virtuous Heritage
-	* Courageous Heritage	
+* Tanuki Mod
+	* Even-tempered Tanuki Heritage
+	* Virtuous Tanuki Heritage
+	* Courageous Tanuki Heritage	
 	* Iron Belly Feat
 	* Scorched on the Crackling Mountain Feat
-* Kitsune
-    * Earthly Wilds Heritage
-	* Frozen Wind Heritage
-	* Celestial Envoy Heritage
-	* Dark Fields Heritage
-	* Empty Sky Heritage
+* Kitsune Mod
+    * Earthly Wilds Kitsune Heritage
+	* Frozen Wind Kitsune Heritage
+	* Celestial Envoy Kitsune Heritage
+	* Dark Fields Kitsune Heritage
+	* Empty Sky Kitsune Heritage
 	* Foxfire Feat
 	* Retractable Claws Feat
 	* Kitsune Spell Familiarity Feat
 	* Star Orb Feat
-* Tengu
+* Tengu Mod
     * Dogtooth Tengu Heritage
     * Jinxed Tengu Heritage
     * Mountainkeeper Tengu Heritage
@@ -26,22 +26,26 @@ Some mods for Dawnsbury Days that add things I think are cool, primarily Ancestr
     * Stormtossed Tengu Heritage
     * Taloned Tengu Heritage
     * Wavediver Tengu Heritage
-    * Mariner's Fire Feat
+    * Mariner's Fire Feat (and the Ignition cantrip)
     * One-Toed Hop Feat
     * Scavenger's Search Feat
     * Squawk! Feat
     * Storm's Lash Feat
     * Tengu Weapon Familiarity Feat
     * Uncanny Agility Feat
-    * Waxed Feathers Feat
-* Mechanics (in the Tengu mod)
-    * Two-Hand trait (specifically, Two-Hand d10)
-* Items (in the Tengu mod)
-    * Katana
-    * Wakizashi
-    * Khakkara
-    * Temple Sword
-    * Tengu Gale Blade
+    * Magpie Snatch Feat
+    * Soaring Flight Feat
+    * Dual-Handed Assault Feat (for Fighter)
+    * A bunch of swords:
+        * Two-Hand trait
+        * Brace trait
+        * Katana
+        * Wakizashi
+        * Khakkara
+        * Temple Sword
+        * Tengu Gale Blade
+        * Nodachi
+        * Bastard Sword
 * Battle Harbinger class archetype
     * All class features up to level 8
     * All battle aura spells - Bless, Bane, Benediction, and Malediction
@@ -69,8 +73,11 @@ Some mods for Dawnsbury Days that add things I think are cool, primarily Ancestr
 * Wavediver Tengu: Swim speed is equal to land speed, like other swimming creatures in Dawnsbury Days.
 * One-Toed Hop: Removes mention of vertical Leaps (because the game is 2D), and explicitly mentions the Powerful Leap synergy in a Special section of the description
 * Squawk!: Original cannot be used in combat, so it is completely replaced. Once per day, you can use a reaction when you fail a check to Demoralize to reroll the check and take the higher result.
-* Tengu Weapon Familiarity: To change the sword you've practiced with, use the retraining menu.
+* Tengu Weapon Familiarity: Just grants proficiency with all swords. 
 * Uncanny Agility: Just grants the Feather Step feat instead of granting it's benefits on specific kinds of terrain. Doesn't grant Steady Balance because Balancing doesn't exist in Dawnsbury Days.
+* Magpie Snatch: Completely different - allows you to grab as many items as can fit in your hands with 1 action.
+* Soaring Flight: Functions like a Leap that can go over creatures. Also, can be made stronger by Powerful Leap.
+* Brace trait: Reduced to a single action, and applies the damage bonus to any attacks made with a reaction Strike, because Ready doesn't exist in Dawnsbury Days.
 ### Battle Harbinger
 * Battle Harbinger Dedication: Because archetypes are not implemented in Dawnsbury Days, the archetype is chosen as a doctrine. You also don't have to take the dedication instead of your 2nd level class feat - if you still want it, the new feat Harbinger's Resiliency has identical functionality to the dedication.
 * Battle Font: Instead of the benefits of the battle font applying to all instances of bless and bane, you are granted special versions of the spells named "battle bless" and "battle bane" which use class DC and gain the benefits of battle harbinger feats. Only these versions can be prepared in the font slots, and normal versions of these aura spells are unchanged. (This is mostly for implementation reasons, and if you use these versions exclusively then there should be no mechanical difference.)
