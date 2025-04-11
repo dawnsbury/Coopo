@@ -7,7 +7,6 @@ using Dawnsbury.Core.Mechanics;
 using Dawnsbury.Core.CombatActions;
 using Dawnsbury.Core.Mechanics.Treasure;
 using Dawnsbury.Core;
-using System.Diagnostics;
 using Dawnsbury.Core.Possibilities;
 using Dawnsbury.Core.Mechanics.Targeting.Targets;
 using Dawnsbury.Core.Mechanics.Targeting;
@@ -20,60 +19,20 @@ using Dawnsbury.Core.Mechanics.Core;
 using Dawnsbury.Auxiliary;
 using Dawnsbury.Audio;
 using Microsoft.Xna.Framework;
-using Dawnsbury.Core.CharacterBuilder.Selections.Options;
-using Dawnsbury.Core.Creatures.Parts;
 using Dawnsbury.Core.Roller;
 using Dawnsbury.Core.Mechanics.Rules;
 using Dawnsbury.Core.CharacterBuilder.FeatsDb.Common;
-using Dawnsbury.Display;
-using Dawnsbury.Core.CharacterBuilder;
-using System.Reflection;
-using Dawnsbury.Core.Mechanics.Targeting.TargetingRequirements;
+using System.Diagnostics;
 
 namespace Dawnsbury.Mods.Ancestries.Tengu;
 
 // TODO: 
-// * add an "unusual X" heritage to every ancestry that gives you 2 free boosts, like most of the basegame ones
-// * Finish up the big tengu update and release when the DLC releases?
+// * Make tengu feather fan, probably just a boring innate spell. At least try making it go off class DC? and make it extend to ancestry cantrips?
 // * maybe make tengu weapon familiarity grant proficiency with the sword in your hand at the start of combat? proficiency with all swords is a little jank
+
 public static class TenguAncestryLoader
 {
     public static readonly Trait TenguTrait = ModManager.RegisterTrait("Tengu", new TraitProperties("Tengu", true) { IsAncestryTrait = true });
-    private static readonly Trait VitalityTrait = ModManager.RegisterTrait("Vitality");
-
-    public static readonly SpellId IgnitionSpellId = ModManager.RegisterNewSpell("Tengu:Ignition", 0, (spellId, caster, level, inCombat, spellInfo) =>
-    {
-        return Spells.CreateModern(IllustrationName.ProduceFlame, "Ignition",
-            [Trait.Attack, Trait.Cantrip, Trait.Fire, Trait.Primal, Trait.Arcane, Trait.VersatileMelee, Trait.SpellCannotBeChosenInCharacterBuilder],
-            "You snap your fingers and point at a target, which begins to smolder.",
-            "Make a spell attack roll. The flame deals " + S.HeightenedVariable(level + 1, 2) + "d4 fire damage." + S.FourDegreesOfSuccessReverse(null, null, "Full damage.", "Double damage, and " + S.HeightenedVariable(level, 1) + "d4 persistent fire damage.") + "\n\n{b}Special: Versatile Melee.{/b} If you're adjacent to the target, increase all of the spell's damage dice to d6s; The spell becomes a melee spell attack and benefits from flanking." + S.HeightenText(level, 1, inCombat, "{b}Heightened (+1){/b} Increase the damage by 1d4 and the persistent damage on a critical hit by 1d4."),
-            Target.Ranged(6), level, null).WithSpellAttackRoll().WithSoundEffect(SfxName.FireRay)
-            .WithEffectOnEachTarget(async (spell, caster, target, result) =>
-            {
-                string dieSize = caster.IsAdjacentTo(target) ? "d6" : "d4";
-                await CommonSpellEffects.DealAttackRollDamage(spell, caster, target, result, (spell.SpellLevel + 1) + dieSize, DamageKind.Fire);
-                if (result == CheckResult.CriticalSuccess)
-                    target.AddQEffect(QEffect.PersistentDamage(spell.SpellLevel + dieSize, DamageKind.Fire));
-            });
-    });
-
-    public static readonly SpellId VitalityLash = ModManager.RegisterNewSpell("Tengu:VitalityLash", 0, (spellId, caster, level, inCombat, spellInfo) =>
-    {
-        return Spells.CreateModern(IllustrationName.DisruptUndead, "Vitality Lash",
-            [Trait.Cantrip, Trait.Concentrate, Trait.Manipulate, VitalityTrait, Trait.Divine, Trait.Primal, Trait.SpellCannotBeChosenInCharacterBuilder],
-            "You demolish the target's corrupted essence with vital energy.",
-            "Deal " + S.HeightenedVariable(level + 1, 2) + "d6 vitality damage. If the target critically fails its basic Fortitude save, it's also enfeebled 1 for 1 round.",
-            Target.Ranged(6).WithAdditionalConditionOnTargetCreature((caster, target) => !target.HasTrait(Trait.Undead) ? Usability.CommonReasons.TargetIsNotUndead : Usability.Usable),
-            level,
-            SpellSavingThrow.Basic(Defense.Fortitude)).WithSoundEffect(SfxName.DivineLance).WithHeighteningOfDamageEveryLevel(level, 1, inCombat, "1d6")
-            .WithEffectOnEachTarget(async (spell, caster, target, checkResult) =>
-            {
-                await CommonSpellEffects.DealBasicDamage(spell, caster, target, checkResult, (level + 1).ToString() + "d6", DamageKind.Positive);
-                if (checkResult != CheckResult.CriticalFailure)
-                    return;
-                target.AddQEffect(QEffect.Enfeebled(1).WithExpirationAtStartOfSourcesTurn(caster, 1));
-            });
-    });
 
     [DawnsburyDaysModMainMethod]
     public static void LoadMod()
@@ -170,7 +129,7 @@ public static class TenguAncestryLoader
 
     static IEnumerable<Feat> GetAncestryFeats()
     {
-        Spell ignition = AllSpells.CreateModernSpellTemplate(IgnitionSpellId, TenguTrait);
+        Spell ignition = AllSpells.CreateModernSpellTemplate(TenguSpells.IgnitionSpellId, TenguTrait);
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Mariner's Fire"),
             1,
@@ -350,9 +309,9 @@ public static class TenguAncestryLoader
                             int handsRequired = floorItems.Sum(tuple => tuple.item.TwoHanded ? 2 : 1);
                             if (handsRequired <= 2)
                             {
-                                foreach ((Item item, Action pickUp) in floorItems)
+                                for (int i = 0; i < 2; i++)
                                 {
-                                    pickUp();
+                                    if (floorItems.Count > 0) floorItems.First().pickUp();
                                 }
                             }
                             else
@@ -382,7 +341,7 @@ public static class TenguAncestryLoader
             ModManager.RegisterFeatName("Soaring Flight {icon:Action}"),
             5,
             "You take to the skies, if only for a moment.",
-            "{b}Frequency{/b} once per round\n\nYou make a 20ft Leap. This Leap is high enough to go above other creatures.\n\n{b}Special{/b} If you also have the Powerful Leap feat, your Leap goes 5ft further.",
+            "{b}Frequency{/b} once per round\n\nYou make a 20ft Leap. This Leap is high enough to go above other creatures.\n\n{b}Special{/b} If you also have the Powerful Leap feat, your Leap goes 5ft further.\n\n{i}(This action can be found in 'Other actions'.){/i}",
             [TenguTrait]
             ).WithOnCreature((Creature cr) =>
             {
@@ -400,7 +359,20 @@ public static class TenguAncestryLoader
                 });
             });
         // Tengu Feather Fan
-        // probably homebrew this to be a worn item instead of a wand you have to wield, cause that is just ridiculous and makes it completely worthless
+        //Spell gustOfWind = AllSpells.CreateModernSpellTemplate(SpellId.PushingGust, TenguTrait);
+        //yield return new TrueFeat(
+        //    ModManager.RegisterFeatName("Tengu Feather Fan"),
+        //    5,
+        //    "You've learned to bind some of your feathers together into a fan to focus your ancestral magic.",
+        //    "descriptive text",
+        //    [TenguTrait]
+        //    ).WithOnCreature((Creature cr) =>
+        //    {
+        //        cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TenguTrait, Ability.Charisma, Trait.Primal).WithSpells([gustOfWind.SpellId], cr.MaximumSpellRank);
+        //    }).WithOnSheet((calculatedSheet) =>
+        //    {
+        //        calculatedSheet.SetProficiency(Trait.Spell, Proficiency.Trained);
+        //   });
     }
 
     static IEnumerable<Feat> GetHeritages()
@@ -452,7 +424,7 @@ public static class TenguAncestryLoader
                     }
                 });
             });
-        Spell vitalityLash = AllSpells.CreateModernSpellTemplate(VitalityLash, TenguTrait);
+        Spell vitalityLash = AllSpells.CreateModernSpellTemplate(TenguSpells.VitalityLash, TenguTrait);
         yield return new HeritageSelectionFeat(
             ModManager.RegisterFeatName("Mountainkeeper Tengu"),
             "You come from a line of tengu ascetics, leaving you with a link to the spirits of the world.",
@@ -517,6 +489,17 @@ public static class TenguAncestryLoader
             ).WithOnCreature(delegate (Creature cr)
             {
                 cr.AddQEffect(QEffect.Swimming());
+            });
+        yield return new HeritageSelectionFeat(
+            ModManager.RegisterFeatName("Unusual Tengu"),
+            "You're not quite like the other tengu.",
+            "You have two free ability boosts instead of a tengu's normal ability boosts."
+            ).WithOnSheet(sheet =>
+            {
+                sheet.AbilityBoostsFabric.AncestryBoosts = [
+                    new FreeAbilityBoost(),
+                    new FreeAbilityBoost()
+                    ];
             });
     }
 
