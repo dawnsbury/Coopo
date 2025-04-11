@@ -208,6 +208,7 @@ public static class KitsuneAncestryLoader
             {
                 cr.AddQEffect(QEffect.DamageResistance(DamageKind.Cold, cr.MaximumSpellRank));
             });
+        // TODO: i dont know if this is actually working; focus spells don't trigger it and i think spells might keep ALL of their tradition traits when cast, meaning a spell that is on the primal and divine list will have the divine trait when a druid casts it. may need some redo-ing, or maybe its actually fine - needs to be tested.
         yield return new HeritageSelectionFeat(
             ModManager.RegisterFeatName("Celestial Envoy Kitsune"),
             "Whether due to a deity's grace or faithful forebears, you have a strong connection to the divine, affording you certain protections.",
@@ -267,6 +268,17 @@ public static class KitsuneAncestryLoader
             ).WithOnSheet((CalculatedCharacterSheetValues sheet) =>
             {
                 sheet.AddSelectionOptionRightNow(new SingleFeatSelectionOption("emptySkySpellSelection", "Heritage Spell Choice", 0, (Feat feat) => feat.FeatName == KitsuneSpellFamiliarityFeatName));
+            });
+        yield return new HeritageSelectionFeat(
+            ModManager.RegisterFeatName("Unusual Kitsune"),
+            "You're not quite like the other kitsune.",
+            "You have two free ability boosts instead of a kitsune's normal ability boosts."
+            ).WithOnSheet(sheet =>
+            {
+                sheet.AbilityBoostsFabric.AncestryBoosts = [
+                        new FreeAbilityBoost(),
+                        new FreeAbilityBoost()
+                    ];
             });
     }
 }
