@@ -14,23 +14,9 @@
     <NoWarn>1701;1702;CA1416;CS1998</NoWarn>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug v2|AnyCPU'">
-	  <TargetFramework>net8.0</TargetFramework>
-    <DebugType>portable</DebugType>
-    <NoWarn>1701;1702;CA1416;CS1998</NoWarn>
-	<DefineConstants>$(DefineConstants);DAWNSBURY_V2</DefineConstants>
-  </PropertyGroup>
-
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <DebugType>portable</DebugType>
     <NoWarn>1701;1702;CA1416;CS1998</NoWarn>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release v2|AnyCPU'">
-	  <TargetFramework>net8.0</TargetFramework>
-    <DebugType>portable</DebugType>
-    <NoWarn>1701;1702;CA1416;CS1998</NoWarn>
-	<DefineConstants>$(DefineConstants);DAWNSBURY_V2</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -57,9 +43,4 @@
 		<Message text="Copied to mod publishing folder." />
 	</Target>
 
-	<Target Name="CopyToPublishFolderV2" AfterTargets="Build" Condition=" '$(Configuration)'=='Release v2' ">
-		<Copy SourceFiles="$(TargetPath)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Dawnsbury Days\Steam Workshop Uploader\Tanuki Mod\CustomMods" />
-
-		<Message text="Copied to mod publishing folder (v2 version)." />
-	</Target>
 </Project>

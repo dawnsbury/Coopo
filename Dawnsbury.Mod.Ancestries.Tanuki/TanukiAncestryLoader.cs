@@ -15,7 +15,14 @@ using Dawnsbury.Auxiliary;
 
 namespace Dawnsbury.Mods.Ancestries.Tanuki;
 
-// IDEA: Homebrew a level 1 version of "hasty celebration", maybe called "premature celebration", and then think up a heritage
+// TODO:
+// * Homebrew some feats:
+//   * tanuki weapon familiarity; new tanuki weapon Umbrella, quarterstaff, halfling frying pan? or maybe more staffs?
+//   * turn false priest form into a more typical innate spellcasting feat
+//   * turn statue form into some kind of stance, something like mountain stance. or maybe just natural armor
+//   * Turn Failure Into Joke, Look on the Bright Side, Find Good in Bad. Tanuki 5. Whenever you roll a critical failure on an attack, as a reaction, you can gain temporary HP equal to your level.
+//   * Tenacity.Tanuki 5. You gain false life as an innate once-per-day spell. (or an action that behaves the same as False Life.)
+//   * homebrew Ponpoko as a weaker, low level version of Ponpoko-Pon! lower damage, and probably smaller cone (see Breath of the Dragon for comparison)
 
 public static class TanukiAncestryLoader
 {
@@ -24,14 +31,10 @@ public static class TanukiAncestryLoader
     [DawnsburyDaysModMainMethod]
     public static void LoadMod()
     {
-#if DEBUG || DEBUG_V2
+#if DEBUG
         //Debugger.Launch();
 #endif
-#if DAWNSBURY_V2
-        ModManager.AssertV2();
-#else
         ModManager.AssertV3();
-#endif
 
         Feat TanukiAncestry = new AncestrySelectionFeat(
             ModManager.RegisterFeatName("Tanuki"),
@@ -114,25 +117,60 @@ public static class TanukiAncestryLoader
                 }
             });
 
-        //yield return new TrueFeat(
-        //    ModManager.RegisterFeatName("Hasty Celebration {icon:reaction}"),
-        //    5,
-        //    "After even the briefest success, you get caught up in the moment and begin to party, cheering your allies on.",
-        //    "{b}Frequency{/b}Once per encounter\n{b}Trigger{/b}You critically succeed at an attack roll against an enemy, or an enemy critically fails their saving throw against one of your effects.\nYou grant all allies within 60 feet a +2 circumstance bonus to attack rolls and damage until the end of your next turn. Unfortunately, while you sing and dance, you aren't keeping an eye on your surroundings like you should, making you flat-footed to all enemies until the end of your next turn as well.",
-        //    [TanukiTrait]
-        //    ).WithOnCreature(delegate (Creature cr)
-        //    {
-        //        if (!cr.PersistentUsedUpResources.UsedUpActions.Contains("Crackling Mountain"))
-        //        {
-        //            cr.AddQEffect(new QEffect("Hasty Celebration {icon:reaction}", "When your attack or effect crits, give your allies a +2 circumstance bonus to attack rolls and damage until the end of your next turn. However, you become flat-footed for this duration as well.")
-        //            {
-        //                Innate = true,
-        //                // continue here, probably gotta use AddGrantingOfTechnical to give every enemy an effect that watches for crits from you. 
-        //                // maybe you could use AfterYouMakeAttackRoll right here for the attack roll part? but for the saving throw part, thats all on the recipient as far as i can tell
+        yield return new TrueFeat(
+            ModManager.RegisterFeatName("Hasty Celebration {icon:Reaction}"),
+            5,
+            "After even the briefest success, you get caught up in the moment and begin to party, cheering your allies on.",
+            "{b}Frequency{/b} Once per encounter\n{b}Trigger{/b} You critically succeed at an attack roll against an enemy, or an enemy critically fails their saving throw against one of your effects.\nYou grant all allies within 60 feet a +2 circumstance bonus to attack rolls and damage until the end of your next turn. Unfortunately, while you sing and dance, you aren't keeping an eye on your surroundings like you should, making you flat-footed to all enemies until the end of your next turn as well.",
+            [TanukiTrait]
+            ).WithOnCreature(delegate (Creature tanuki)
+            {
+                // TODO: test more thoroughly
+                tanuki.AddQEffect(new QEffect("Hasty Celebration {icon:Reaction}", "When your attack or effect crits, give your allies a +2 circumstance bonus to attack rolls and damage until the end of your next turn. However, you become flat-footed for this duration as well.")
+                {
+                    Innate = true,
+                    StartOfCombat = async (qf) =>
+                    {
+                        var enemies = tanuki.Battle.AllCreatures.Where(cr => cr.EnemyOf(tanuki));
+                        var allies = tanuki.Battle.AllCreatures.Where(cr => !cr.EnemyOf(tanuki) && cr != tanuki); // allies does not include yourself
+                        List<QEffect> trackingEffects = [];
+                        foreach (Creature enemy in enemies)
+                        {
+                            QEffect trackingEffect = new QEffect()
+                            {
+                                // TODO: this works *okay*, but it has some issues. for example, it doesnt work on reactions (e.g. blood vendetta crit), or on off-turn effects (e.g. bane saving throw). the reactions thing is worse, but neither thing is absolutely required. could just change the feat text to say "action" instead of "effect"
+                                YouAreTargetedByARoll = async (qf, action, resultBreakdown) =>
+                                {
+                                    if (action.Owner != tanuki) return false;
+                                    string messageStarter;
+                                    if (action.SavingThrow != null && resultBreakdown.CheckResult == CheckResult.CriticalFailure)
+                                        messageStarter = "An enemy critically failed a saving throw against you!";
+                                    else if (action.ActiveRollSpecification != null && action.HasTrait(Trait.Attack) && resultBreakdown.CheckResult == CheckResult.CriticalSuccess)
+                                        messageStarter = "You got a critical hit!";
+                                    else
+                                        return false;
 
-        //            });
-        //        }
-        //    });
+                                    bool used = await tanuki.AskToUseReaction(messageStarter + " Spend your reaction to use {b}Hasty Celebration{/b}, granting allies a +2 circumstance bonus to attack rolls and damage until the end of your next turn, but making yourself flat-footed for that same duration?");
+                                    if (!used) return false;
+                                    trackingEffects.ForEach(tqf => tqf.WithExpirationEphemeral()); // once per encounter - remove triggering effect after the first use
+                                    tanuki.AddQEffect(QEffect.FlatFooted("Hasty Celebration").WithExpirationAtEndOfSourcesNextTurn(tanuki, false));
+                                    allies.ForEach(ally => ally.AddQEffect(new QEffect("Hasty Celebration", $"+2 circumstance bonus to attack rolls and damage. Expires at the  end of {tanuki.Name}'s next turn.")
+                                    {
+                                        Illustration = IllustrationName.WinningStreak,
+                                        BonusToAttackRolls = (_, action, _) => action.HasTrait(Trait.Attack) ? new Bonus(2, BonusType.Circumstance, "Hasty Celebration", true) : null,
+                                        BonusToDamage = (_, _, _) => new Bonus(2, BonusType.Circumstance, "Hasty Celebration", true)
+                                    }.WithExpirationAtEndOfSourcesNextTurn(tanuki, true)));
+
+                                    return false;
+                                }
+                            };
+                            trackingEffects.Add(trackingEffect);
+                            enemy.AddQEffect(trackingEffect);
+                        }
+                    },
+                    
+                });
+            });
     }
 
     static IEnumerable<Feat> GetHeritages()
@@ -153,18 +191,6 @@ public static class TanukiAncestryLoader
                         if (!action.SavingThrow.Defense.IsSavingThrow()) return null;
                         return new Bonus(1, BonusType.Circumstance, "Even-tempered");
                     },
-#if DAWNSBURY_V2
-                    // legacy V2 method, equivalent to following version
-                    AdjustSavingThrowResult = (QEffect effect, CombatAction action, CheckResult result) =>
-                    {
-                        if (!action.HasTrait(Trait.Emotion)) return result;
-                        if (action.SavingThrow == null) return result;
-                        if (!action.SavingThrow.Defense.IsSavingThrow()) return result;
-                        if (result == CheckResult.Success) return CheckResult.CriticalSuccess;
-                        if (result == CheckResult.Failure) return CheckResult.CriticalFailure;
-                        else return result;
-                    },
-#else
                     AdjustSavingThrowCheckResult = (QEffect effect, Defense defense, CombatAction action, CheckResult result) =>
                     {
                         if (!action.HasTrait(Trait.Emotion)) return result;
@@ -173,7 +199,6 @@ public static class TanukiAncestryLoader
                         if (result == CheckResult.Failure) return CheckResult.CriticalFailure;
                         else return result;
                     }
-#endif
                 });
             });
 
@@ -239,6 +264,18 @@ public static class TanukiAncestryLoader
                         self.ExpiresAt = ExpirationCondition.Immediately; // only usable once per encounter
                     }
                 });
+            });
+        yield return new HeritageSelectionFeat(
+            ModManager.RegisterFeatName("Completely Average Tanuki"),
+            "You're as typical as a tanuki can be. You don't deviate from the norm {b}in any way.{/b}",
+            "You have two free ability boosts instead of a tanuki's normal ability boosts and flaw."
+            ).WithOnSheet(sheet =>
+            {
+                sheet.AbilityBoostsFabric.AbilityFlaw = null;
+                sheet.AbilityBoostsFabric.AncestryBoosts = [
+                        new FreeAbilityBoost(),
+                        new FreeAbilityBoost()
+                    ];
             });
     }
 
