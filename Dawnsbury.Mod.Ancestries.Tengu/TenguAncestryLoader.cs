@@ -39,7 +39,8 @@ public static class TenguAncestryLoader
     {
         // enable the debugger in debug mode, and assert that the right version of the game's DLL is being built against
 #if DEBUG
-        Debugger.Launch();
+        
+        //Debugger.Launch();
 #endif
         ModManager.AssertV3();
 
@@ -83,6 +84,7 @@ public static class TenguAncestryLoader
                     if (!weapon.HasTrait(Trait.Melee)) return null;
                     if (weapon.HasTrait(Trait.Unarmed)) return null;
                     // for whatever reason, OverrideItemDamageDie is only checked when the Strike action is created, not when it's used. therefore, we add it to the feat's effect just so that the strike can grab it, then remove it.
+                    // TODO: this should use the IncreaseDamageDie thing instead if the weapon isnt Two-Hand, so that it doesnt stack with other dice increasing effects like deadly simplicity. This is only gonna happen with a very very strange multiclass build, so low priority
                     self.OverrideItemDamageDie = (QEffect qf, Item weapon, StrikeModifiers strikeModifiers) =>
                         {
                             if (Items.WeaponHasTwoHand(weapon, out Dice d)) return d;

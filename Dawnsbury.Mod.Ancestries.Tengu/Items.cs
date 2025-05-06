@@ -1,5 +1,6 @@
 ﻿using Dawnsbury.Core;
 using Dawnsbury.Core.CharacterBuilder.FeatsDb.Common;
+using Dawnsbury.Core.CharacterBuilder.Selections.Options;
 using Dawnsbury.Core.CombatActions;
 using Dawnsbury.Core.Creatures;
 using Dawnsbury.Core.Creatures.Parts;
@@ -13,6 +14,7 @@ using Dawnsbury.Core.Roller;
 using Dawnsbury.Display.Illustrations;
 using Dawnsbury.Display.Text;
 using Dawnsbury.Modding;
+using Microsoft.Xna.Framework;
 using System;
 
 namespace Dawnsbury.Mods.Ancestries.Tengu
@@ -42,14 +44,14 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
             });
             ModManager.RegisterNewItemIntoTheShop("khakkara", (ItemName name) =>
             {
-                return new Item(name, new ModdedIllustration("TenguAssets/khakkara.png"), "khakkara", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Club, /*Trait.Monk,*/ TwoHandD10, Trait.VersatileP])
+                return new Item(name, new ModdedIllustration("TenguAssets/khakkara.png"), "khakkara", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Club, Trait.MonkWeapon, TwoHandD10, Trait.VersatileP])
                 {
                     WeaponProperties = new WeaponProperties("1d6", DamageKind.Bludgeoning)
                 }.WithMainTrait(Khakkara).ImplementTwoHand(6, 10);
             });
             ModManager.RegisterNewItemIntoTheShop("temple sword", (ItemName name) =>
             {
-                return new Item(name, new ModdedIllustration("TenguAssets/templeSword.png"), "temple sword", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, /*Trait.Monk,*/ Trait.Trip])
+                return new Item(name, new ModdedIllustration("TenguAssets/templeSword.png"), "temple sword", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.MonkWeapon, Trait.Trip])
                 {
                     WeaponProperties = new WeaponProperties("1d8", DamageKind.Slashing)
                 }.WithMainTrait(TempleSword);
@@ -125,6 +127,7 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
                 new ActionPossibility(self.TwoHanded ? SwapToOneHand(holder, self, baseDamageDiceSize) : SwapToTwoHands(holder, self, upgradedDamageDiceSize));
             item.StateCheckWhenWielded = (Creature wielder, Item item) =>
             {
+                //wielder.PersistentCharacterSheet.Calculated.AddSelectionOption(new SingleFeatSelectionOption("twoHandBeingHeldTwoHandedInitially", "THIS IS THE NAME", 0, (feat => feat.HasTrait(Trait.MonkPathToPerfection))));
                 wielder.AddQEffect(new QEffect()
                 {
                     StartOfCombat = async (QEffect self) =>
