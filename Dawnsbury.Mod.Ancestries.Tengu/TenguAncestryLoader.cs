@@ -23,6 +23,7 @@ using Dawnsbury.Core.Roller;
 using Dawnsbury.Core.Mechanics.Rules;
 using Dawnsbury.Core.CharacterBuilder.FeatsDb.Common;
 using System.Diagnostics;
+using Dawnsbury.Display;
 
 namespace Dawnsbury.Mods.Ancestries.Tengu;
 
@@ -130,16 +131,17 @@ public static class TenguAncestryLoader
 
     static IEnumerable<Feat> GetAncestryFeats()
     {
-        Spell ignition = AllSpells.CreateModernSpellTemplate(TenguSpells.IgnitionSpellId, TenguTrait);
+        Spell marinersFire = AllSpells.CreateModernSpellTemplate(TenguSpells.MarinersFireSpellId, TenguTrait);
+        ModManager.RegisterInlineTooltip("marinersFireExplanation", "Mariner's Fire is functionally identical to the spell {i}Ignition{/i}.");
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Mariner's Fire"),
             1,
             "You conjure uncanny orbs of spiritual flame that float above or below the water's surface.",
-            $"You can cast the {ignition.ToSpellLink()} cantrip as a primal innate spell at will. Your spellcasting ability for this spell is Charisma. You can cast this cantrip underwater.",
+            $"You can cast the {{tooltip:marinersFireExplanation}}mariner's fire{{/}} cantrip as a primal innate spell at will. Your spellcasting ability for this spell is Charisma. You can cast this cantrip underwater.",
             [TenguTrait]
-            ).WithIllustration(ignition.Illustration).WithRulesBlockForSpell(ignition.SpellId).WithOnCreature(delegate (Creature cr)
+            ).WithIllustration(marinersFire.Illustration).WithRulesBlockForSpell(marinersFire.SpellId).WithOnCreature(delegate (Creature cr)
             {
-                cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TenguTrait, Ability.Charisma, Trait.Primal).WithSpells([ignition.SpellId], cr.MaximumSpellRank);
+                cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TenguTrait, Ability.Charisma, Trait.Primal).WithSpells([marinersFire.SpellId], cr.MaximumSpellRank);
             }).WithOnSheet(calculatedSheet =>
             {
                 calculatedSheet.SetProficiency(Trait.Spell, Proficiency.Trained);
@@ -425,14 +427,15 @@ public static class TenguAncestryLoader
                     }
                 });
             });
-        Spell vitalityLash = AllSpells.CreateModernSpellTemplate(TenguSpells.VitalityLash, TenguTrait);
+        Spell mountainkeepersLash = AllSpells.CreateModernSpellTemplate(TenguSpells.MountainkeepersLashSpellId, TenguTrait);
+        ModManager.RegisterInlineTooltip("mountainkeepersLashExplanation", "Mountainkeeper's Lash is functionally identical to the spell {i}Vitality Lash{/i}.");
         yield return new HeritageSelectionFeat(
             ModManager.RegisterFeatName("Mountainkeeper Tengu"),
             "You come from a line of tengu ascetics, leaving you with a link to the spirits of the world.",
-            $"You can cast the {vitalityLash.ToSpellLink()} cantrip as a primal innate spell at will. Your spellcasting ability for this spell is Charisma."
-            ).WithOnCreature((Creature cr) =>
+            $"You can cast the {{tooltip:mountainkeepersLashExplanation}}mountainkeeper's lash{{/}} cantrip as a primal innate spell at will. Your spellcasting ability for this spell is Charisma."
+            ).WithRulesBlockForSpell(mountainkeepersLash.SpellId).WithOnCreature((Creature cr) =>
             {
-                cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TenguTrait, Ability.Charisma, Trait.Primal).WithSpells([vitalityLash.SpellId], cr.MaximumSpellRank);
+                cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TenguTrait, Ability.Charisma, Trait.Primal).WithSpells([mountainkeepersLash.SpellId], cr.MaximumSpellRank);
             }).WithOnSheet((calculatedSheet) =>
             {
                 calculatedSheet.SetProficiency(Trait.Spell, Proficiency.Trained);

@@ -24,9 +24,9 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
     class TenguSpells
     {
 
-        public static readonly SpellId IgnitionSpellId = ModManager.RegisterNewSpell("Tengu:Ignition", 0, (spellId, caster, level, inCombat, spellInfo) =>
+        public static readonly SpellId MarinersFireSpellId = ModManager.RegisterNewSpell("Tengu:MarinersFire", 0, (spellId, caster, level, inCombat, spellInfo) =>
         {
-            return Spells.CreateModern(IllustrationName.ProduceFlame, "Ignition",
+            return Spells.CreateModern(IllustrationName.ProduceFlame, "Mariner's Fire",
                 [Trait.Attack, Trait.Cantrip, Trait.Fire, Trait.Primal, Trait.Arcane, Trait.VersatileMelee, Trait.SpellCannotBeChosenInCharacterBuilder],
                 "You snap your fingers and point at a target, which begins to smolder.",
                 "Make a spell attack roll. The flame deals " + S.HeightenedVariable(level + 1, 2) + "d4 fire damage." + S.FourDegreesOfSuccessReverse(null, null, "Full damage.", "Double damage, and " + S.HeightenedVariable(level, 1) + "d4 persistent fire damage.") + "\n\n{b}Special: Versatile Melee.{/b} If you're adjacent to the target, increase all of the spell's damage dice to d6s; The spell becomes a melee spell attack and benefits from flanking." + S.HeightenText(level, 1, inCombat, "{b}Heightened (+1){/b} Increase the damage by 1d4 and the persistent damage on a critical hit by 1d4."),
@@ -40,9 +40,9 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
                 });
         });
 
-        public static readonly SpellId VitalityLash = ModManager.RegisterNewSpell("Tengu:VitalityLash", 0, (spellId, caster, level, inCombat, spellInfo) =>
+        public static readonly SpellId MountainkeepersLashSpellId = ModManager.RegisterNewSpell("Tengu:MountainkeepersLash", 0, (spellId, caster, level, inCombat, spellInfo) =>
         {
-            return Spells.CreateModern(IllustrationName.DisruptUndead, "Vitality Lash",
+            return Spells.CreateModern(IllustrationName.DisruptUndead, "Mountainkeeper's Lash",
                 [Trait.Cantrip, Trait.Concentrate, Trait.Manipulate, Trait.Positive, Trait.Divine, Trait.Primal, Trait.SpellCannotBeChosenInCharacterBuilder],
                 "You demolish the target's corrupted essence with vital energy.",
                 "Deal " + S.HeightenedVariable(level + 1, 2) + "d6 vitality damage. If the target critically fails its basic Fortitude save, it's also enfeebled 1 for 1 round.",
