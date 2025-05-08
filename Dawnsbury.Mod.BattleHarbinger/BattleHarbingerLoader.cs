@@ -17,6 +17,8 @@ using Dawnsbury.Core.Mechanics.Damage;
 using Dawnsbury.Core.Roller;
 using Dawnsbury.Core.Mechanics.Core;
 using Dawnsbury.Core.CharacterBuilder.FeatsDb;
+using Dawnsbury.Core.CharacterBuilder.FeatsDb.TrueFeatDb.Archetypes;
+using Dawnsbury.Display.Text;
 
 namespace Dawnsbury.Mods.BattleHarbinger;
 
@@ -27,14 +29,10 @@ public static class BattleHarbingerLoader
     public static void LoadMod()
     {
         // enable the debugger in debug mode, and assert that the right version of the game's DLL is being built against
-#if DEBUG || DEBUG_V2
+#if DEBUG
         //Debugger.Launch();
 #endif
-#if DAWNSBURY_V2
-        ModManager.AssertV2();
-#else
         ModManager.AssertV3();
-#endif
 
         ModSpells.RegisterSpells();
 
@@ -58,16 +56,32 @@ public static class BattleHarbingerLoader
     }
     private static IEnumerable<Feat> GetClassFeats()
     {
+        // actual dedication, which gives nothing because its purely technical
+        Feat dedication = ArchetypeFeats.CreateAgnosticArchetypeDedication(ModTrait.BattleHarbinger,
+            "",
+            "You are able to take Battle Harbinger archetype feats. This is granted as a bonus feat by the Battle Harbinger doctrine, and provides no other benefits.")
+            .WithPrerequisite(sheet => sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "Only clerics with the Battle Harbinger doctrine can access this archetype.");
+        ModFeatName.BattleHarbingerDedication = dedication.FeatName;
+        yield return dedication;
+        // Additional Feats
+        yield return ArchetypeFeats.DuplicateFeatAsArchetypeFeat(FeatName.PowerAttack, ModTrait.BattleHarbinger, 2);
+        yield return ArchetypeFeats.DuplicateFeatAsArchetypeFeat(FeatName.IntimidatingStrike, ModTrait.BattleHarbinger, 4);
+        yield return ArchetypeFeats.DuplicateFeatAsArchetypeFeat(FeatName.BespellWeapon, ModTrait.BattleHarbinger, 6);
         // Harbinger's Resiliency (Battle Harbinger Dedication but optional)
         yield return new TrueFeat(
-        ModManager.RegisterFeatName("Harbinger's Resiliency"),
-        2,
-        "You have trained extensively in combat, battlefield tactics, and stamina, focusing on being an exceptional warrior for your faith.",
-            "You gain the {i}Toughness{/i} general feat. If you already have this feat, you gain another general feat of your choice.",
-            [ModTrait.BattleHarbinger, Trait.Cleric, Trait.Homebrew]
-            ).WithPrerequisite(sheet => sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is only available to Battle Harbingers.")
+            ModManager.RegisterFeatName("Harbinger's Resiliency"),
+            2,
+            "You have trained extensively in combat, battlefield tactics, and stamina, focusing on being an exceptional warrior for your faith.",
+            "You become trained in your choice of Athletics or Acrobatics. If you are already trained in both skills, you instead become trained in another skill of your choice. You gain the {i}Toughness{/i} general feat. If you already have this feat, you gain another general feat of your choice.",
+            [Trait.Homebrew]
+            ).WithAvailableAsArchetypeFeat(ModTrait.BattleHarbinger)
+            .WithPrerequisite(sheet => sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is only available to Battle Harbingers.")
             .WithOnSheet(sheet =>
             {
+                // Grant skill increase
+                sheet.TrainInThisOrThisOrSubstitute(Skill.Athletics, Skill.Acrobatics);
+                
+                // Grant Toughness or general feat
                 if (!sheet.HasFeat(FeatName.Toughness))
                 {
                     sheet.GrantFeat(FeatName.Toughness);
@@ -84,22 +98,18 @@ public static class BattleHarbingerLoader
             4,
             "You've enhanced your training with your battle magic, allowing you access to a more potent divine font.",
             "Add {i}battle benediction{/i} and {i}battle malediction{/i} to your list of battle auras. Like your other battle auras, you can prepare these in the additional slots from your divine font.",
-            [ModTrait.BattleHarbinger, Trait.Cleric]
-            ).WithPrerequisite(sheet => sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is only available to Battle Harbingers.")
-            .WithOnSheet(sheet =>
-            {
-                // Grant access to the spells for preparation
-                sheet.ClericAdditionalPreparableSpells.Add(ModSpellId.BattleBenediction);
-                sheet.ClericAdditionalPreparableSpells.Add(ModSpellId.BattleMalediction);
-            });
+            []
+            ).WithAvailableAsArchetypeFeat(ModTrait.BattleHarbinger)
+            .WithPrerequisite(sheet => sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is only available to Battle Harbingers.");
         // Tandem Onslaught
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Tandem Onslaught"),
             4,
             "You have trained your body and mind to work in tandem, and you can combine your combat and spellcasting prowess to better support yourself in battle.",
             "The first time each round that you successfully hit and deal damage to an enemy creature with a Strike using a weapon or unarmed attack, you can automatically Sustain a single battle aura that you currently have active, applying any additional effects that come with Sustaining the spell.",
-            [ModTrait.BattleHarbinger, Trait.Cleric]
-            ).WithPrerequisite(sheet => sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is only available to Battle Harbingers.")
+            []
+            ).WithAvailableAsArchetypeFeat(ModTrait.BattleHarbinger)
+            .WithPrerequisite(sheet => sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is only available to Battle Harbingers.")
             .WithOnCreature((Creature cr) =>
             {
                 cr.AddQEffect(new QEffect()
@@ -138,16 +148,18 @@ public static class BattleHarbingerLoader
             6,
             "The power of your deity and your own convictions leave an impression on creatures even when they normally would be unable to comprehend your words or the feelings spurred on by your god.",
             "Your battle auras can affect mindless creatures, though they gain a +4 circumstance bonus on saving throws to resist the battle aura's effects.",
-            [ModTrait.BattleHarbinger, Trait.Cleric]
-            ).WithPrerequisite(sheet => sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is only available to Battle Harbingers.");
+            []
+            ).WithAvailableAsArchetypeFeat(ModTrait.BattleHarbinger)
+            .WithPrerequisite(sheet => sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is only available to Battle Harbingers.");
         // Harbinger's Protection
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Harbinger's Protection"),
             6,
             "You often work on missions alone, making sure to cover up your weaknesses more effectively than other members of your faith.",
             "You are trained in heavy armor. When you gain expert or greater proficiency in any type of armor, you also gain that proficiency in heavy armor.",
-            [ModTrait.BattleHarbinger, Trait.Cleric]
-            ).WithPrerequisite(sheet => sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is only available to Battle Harbingers.")
+            []
+            ).WithAvailableAsArchetypeFeat(ModTrait.BattleHarbinger)
+            .WithPrerequisite(sheet => sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is only available to Battle Harbingers.")
             .WithOnSheet(sheet =>
             {
                 // set heavy armor proficiency to at least trained, and increase if higher proficiency is had in light or medium.
@@ -160,21 +172,16 @@ public static class BattleHarbingerLoader
             ModManager.RegisterFeatName("Creed Magic"),
             8,
             "You've expanded your divine capabilities, granting you magic that better supports your combat focus.",
-            "You gain two special 2nd-level creed spell slots, which can be used to prepare {i}resist energy{/i}" +
-#if !DAWNSBURY_V2
-            ", {i}see invisibility{/i}," +
-#endif
-            " and {i}true strike{/i} as divine spells.",
-            [ModTrait.BattleHarbinger, Trait.Cleric]
-            ).WithPrerequisite(sheet => sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is only available to Battle Harbingers.")
+            "You gain two special 2nd-level creed spell slots, which can be used to prepare {i}resist energy{/i}, {i}see invisibility{/i}, and {i}true strike{/i} as divine spells.",
+            []
+            ).WithAvailableAsArchetypeFeat(ModTrait.BattleHarbinger)
+            .WithPrerequisite(sheet => sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is only available to Battle Harbingers.")
             .WithOnSheet(sheet =>
             {
                 sheet.PreparedSpells[Trait.Cleric].Slots.Add(new CreedMagicSpellSlot(2, "CreedMagic:1"));
                 sheet.PreparedSpells[Trait.Cleric].Slots.Add(new CreedMagicSpellSlot(2, "CreedMagic:2"));
                 sheet.ClericAdditionalPreparableSpells.Add(SpellId.ResistEnergy);
-#if !DAWNSBURY_V2
                 sheet.ClericAdditionalPreparableSpells.Add(SpellId.SeeInvisibility);
-#endif
                 sheet.ClericAdditionalPreparableSpells.Add(SpellId.TrueStrike);
             });
         // Harbinger's Armament
@@ -183,8 +190,9 @@ public static class BattleHarbingerLoader
             8,
             "Your deity grants you extra power that you have learned to channel into your weapons.",
             "Any melee Strike you make gains the benefits of the disrupting rune. This does not count against your rune limit for that weapon.\n\n{b}Disrupting{/b} The weapon deals 1d6 additional positive damage to undead, and on a critical hit, a struck undead creature is enfeebled 1 until the end of your next turn.",
-            [ModTrait.BattleHarbinger, Trait.Cleric]
-            ).WithPrerequisite(sheet => sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is only available to Battle Harbingers.")
+            []
+            ).WithAvailableAsArchetypeFeat(ModTrait.BattleHarbinger)
+            .WithPrerequisite(sheet => sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is only available to Battle Harbingers.")
             .WithOnCreature((Creature cr) =>
             {
                 cr.AddQEffect(new QEffect("Harbinger's Armament", "Your melee strikes are disrupting.") {
@@ -199,39 +207,29 @@ public static class BattleHarbingerLoader
                             enfeebled.RoundsLeft = 1;
                             enfeebled.Source = attacker;
                             enfeebled.CannotExpireThisTurn = true;
-#if !DAWNSBURY_V2
                             enfeebled.CountsAsBeneficialToSource = true;
-#endif
                             target.AddQEffect(enfeebled);
                         }
                     }
                 });
             });
-        // magus can have it so i guess battle harbinger can have it
-        //AllFeats.All.FirstOrDefault(feat => feat.FeatName == FeatName.AbundantSpellcastingCleric1)?.Prerequisites.Add(
-        //    new Prerequisite(sheet => !sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is not available to Battle Harbingers.")
-        //    );
-        //AllFeats.All.FirstOrDefault(feat => feat.FeatName == FeatName.AbundantSpellcastingCleric2)?.Prerequisites.Add(
-        //    new Prerequisite(sheet => !sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is not available to Battle Harbingers.")
-        //    );
-#if !DAWNSBURY_V2
         AllFeats.All.FirstOrDefault(feat => feat.FeatName == FeatName.VersatileFont)?.Prerequisites.Add(
             new Prerequisite(sheet => !sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is not available to Battle Harbingers.")
             );
-#endif
     }
 
     private static Feat BattleHarbingerDoctrine()
     {
+        ModManager.RegisterInlineTooltip("bhdedicationdisclaimer", "{b}Difference from tabletop: {/b} This dedication feat grants you no benefits besides the ability to take Battle Harbinger feats. The benefits that the tabletop version provide are available as an optional new feat, Harbinger's Resiliency.");
         return new Feat(
             ModFeatName.BattleHarbingerDoctrine,
             "You've dedicated yourself to the battle creed, a specific doctrine that puts combat prowess first, even at the expense of a cleric's typical spellcasting and restorative abilities.",
-            "This doctrine is a {i}class archetype{/i}: It modifies your Spellcasting and Divine Font class features, and you gain your doctrine benefits at different levels than normal. \n" +
+            "This doctrine is a {i}class archetype{/i}: It modifies your Spellcasting and Divine Font class features, and you gain your doctrine benefits at different levels than normal. At 2nd level you gain {tooltip:bhdedicationdisclaimer}Battle Harbinger Dedication{/} as a bonus feat, which grants you access to the Battle Harbinger archetype's feats. \n" +
             "{b}Initial Creed (at level 1):{/b} You're trained in light and medium armor. You have expert proficiency in Fortitude saves. You're trained in martial weapons. If your deity's favored weapon is a simple weapon or an unarmed attack, you gain the Deadly Simplicity cleric feat.\n" +
             "{b}Lesser Creed (at level 5):{/b} You gain expert proficiency with your deity's favored weapon, martial weapons, simple weapons, and unarmed attacks. When you critically succeed at an attack roll using your deity's favored weapon, you apply the weapon's {tooltip:criteffect}critical specialization effect{/tooltip}. Your proficiency rank for your class DC increases to expert.\n\n" +
             "In addition, the following class features are modified:\n" +
             "{b}Spellcasting:{/b} Your spellcasting capabilities are more restricted. At 1st level, you can prepare only one 1st-level spell and five cantrips, and at 3rd level, you gain only one 2nd-level spell slot; You gain one more spell slot at 2nd and 4th level as normal. From 5th level onwards, you always have two spell slots of your highest level and two more of your second highest level.\n" +
-            "{b}Divine Font:{/b} Instead of preparing {i}heal{/i} or {i}harm{/i} spells with your divine font, you gain the battle font, which allows you to prepare {i}battle auras{i} - special versions of aura spells such as {i}bless{/i} and {i}bane{/i} that use your class DC instead of your spell DC. You gain access to the {i}battle bless{/i} and {i}battle bane{/i} battle auras, and you gain 4 additional spell slots each day at your highest level of cleric spell slots, in which you can only prepare battle auras. Any feats or effects that refer to battle auras refer to these spells, regardless of whether they were cast from your divine font spell slots or your standard spell slots. At 5th level, the number of additional slots increases to 5.",
+            "{b}Divine Font:{/b} Instead of preparing {i}heal{/i} or {i}harm{/i} spells with your divine font, you gain the battle font, which allows you to prepare {i}battle auras{i} - special versions of aura spells such as {i}bless{/i} and {i}bane{/i} that use your class DC instead of your spell DC. You gain access to the battle aura spells {i}battle bless{/i}, {i}battle bane{/i}, {i}battle benediction{/i} and {i}battle malediction{/i}, and you gain 4 additional spell slots each day at your highest level of cleric spell slots in which you can only prepare battle auras. Any feats or effects that refer to battle auras refer to these spells, regardless of whether they were cast from your divine font spell slots or your standard spell slots. At 5th level, the number of additional slots increases to 5.",
             [Trait.DoctrineSelection],
             null).WithOnSheet(sheet =>
             {
@@ -245,6 +243,11 @@ public static class BattleHarbingerLoader
                 {
                     sheet.GrantFeat(FeatName.DeadlySimplicity);
                 }
+                // Dedication for free at level 2 (homebrew)
+                sheet.AddAtLevel(2, sheet =>
+                {
+                    sheet.GrantFeat(ModFeatName.BattleHarbingerDedication);
+                });
                 // Lesser Creed (level 5)
                 sheet.AddAtLevel(5, sheet =>
                 {
@@ -291,13 +294,14 @@ public static class BattleHarbingerLoader
                         sheet.PreparedSpells[Trait.Cleric].Slots.Add(new BattleFontSpellSlot(sheet.MaximumSpellLevel, $"BattleFont:{i}", extraAuras));
                     }
                 };
-                // Grant access to battle bless and battle bane
+                // Grant access to battle aura spells
                 sheet.ClericAdditionalPreparableSpells.Add(ModSpellId.BattleBless);
                 sheet.ClericAdditionalPreparableSpells.Add(ModSpellId.BattleBane);
+                sheet.ClericAdditionalPreparableSpells.Add(ModSpellId.BattleBenediction);
+                sheet.ClericAdditionalPreparableSpells.Add(ModSpellId.BattleMalediction);
             }).WithOnCreature((CalculatedCharacterSheetValues sheet, Creature cr) =>
             {
                 // grant crit spec with favoured weapon at level 5 and on
-#if !DAWNSBURY_V2
                 if (cr.Level >= 5)
                     cr.AddQEffect(new QEffect()
                     {
@@ -308,7 +312,6 @@ public static class BattleHarbingerLoader
                             else return false;
                         }
                     });
-#endif
             });
     }
 }

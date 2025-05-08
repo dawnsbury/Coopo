@@ -2,6 +2,8 @@
 using Dawnsbury.Core.CharacterBuilder;
 using Dawnsbury.Display;
 using Dawnsbury.Mods.BattleHarbinger.RegisteredValues;
+using Dawnsbury.Core.CharacterBuilder.FeatsDb.Spellbook;
+using Dawnsbury.Core.Mechanics.Enumerations;
 
 namespace Dawnsbury.Mods.BattleHarbinger
 {
@@ -21,27 +23,16 @@ namespace Dawnsbury.Mods.BattleHarbinger
             }
         }
 
-#if !DAWNSBURY_V2
         public override string? DisallowsSpellBecause(Spell preparedSpell, CharacterSheet sheet, PreparedSpellSlots preparedSpellSlots)
         {
             if (BattleAuras.Contains(preparedSpell.SpellId))
             {
                 return base.DisallowsSpellBecause(preparedSpell, sheet, preparedSpellSlots);
             }
-
-            return "Battle Font slots only allow {i}battle aura{/i} spells such as {i}battle bless{/i} and {i}battle bane{/i}.";
+            string allowed = BattleAuras.Select(id => AllSpells.CreateModernSpellTemplate(id, Trait.Cleric).Name).Aggregate((x, y) => $"{x}\n{y}");
+            return "You can only prepare these spells in your battle font slots:\n" + allowed;
         }
-#else
-        public override bool AdmitsSpell(Spell preparedSpell, CharacterSheet sheet, PreparedSpellSlots preparedSpellSlots)
-        {
-            if (BattleAuras.Contains(preparedSpell.SpellId))
-            {
-                return base.AdmitsSpell(preparedSpell, sheet, preparedSpellSlots);
-            }
 
-            return false;
-        }
-#endif
     }
 }
 

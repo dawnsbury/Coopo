@@ -19,6 +19,7 @@ namespace Dawnsbury.Mods.BattleHarbinger.RegisteredValues
         public static readonly FeatName BattleHarbingerDoctrine = ModManager.RegisterFeatName("Battle Harbinger");
         public static readonly FeatName AuraEnhancement = ModManager.RegisterFeatName("Aura Enhancement");
         public static readonly FeatName ExigentAura = ModManager.RegisterFeatName("Exigent Aura");
+        public static FeatName BattleHarbingerDedication; // is set by the code that creates the dedication
     }
 
     internal class ModQEffectId

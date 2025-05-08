@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PlatformTarget>x64</PlatformTarget>
-    <Configurations>Debug;Release;Debug v2;Release v2</Configurations>
+    <Configurations>Debug;Release</Configurations>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -14,23 +14,9 @@
     <NoWarn>1701;1702;CA1416;CS1998</NoWarn>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug v2|AnyCPU'">
-	<TargetFramework>net8.0</TargetFramework>
-    <DebugType>portable</DebugType>
-    <NoWarn>1701;1702;CA1416;CS1998</NoWarn>
-    <DefineConstants>$(DefineConstants);DAWNSBURY_V2</DefineConstants>
-  </PropertyGroup>
-
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <DebugType>portable</DebugType>
     <NoWarn>1701;1702;CA1416;CS1998</NoWarn>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release v2|AnyCPU'">
-	<TargetFramework>net8.0</TargetFramework>
-    <DebugType>portable</DebugType>
-    <NoWarn>1701;1702;CA1416;CS1998</NoWarn>
-    <DefineConstants>$(DefineConstants);DAWNSBURY_V2</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -65,17 +51,6 @@
 		<Copy SourceFiles="@(AssetFiles)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Dawnsbury Days\Steam Workshop Uploader\Battle Harbinger Mod\CustomModsV3\BattleHarbingerAssets" />
 
 		<Message text="Copied to mod publishing folder." />
-	</Target>
-
-	<Target Name="CopyToPublishFolderV2" AfterTargets="Build" Condition=" '$(Configuration)'=='Release v2' ">
-		<Copy SourceFiles="$(TargetPath)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Dawnsbury Days\Steam Workshop Uploader\Battle Harbinger Mod\CustomMods" />
-
-		<ItemGroup>
-			<AssetFiles Include="$(ProjectDir)BattleHarbingerAssets\*.*" />
-		</ItemGroup>
-		<Copy SourceFiles="@(AssetFiles)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Dawnsbury Days\Steam Workshop Uploader\Battle Harbinger Mod\CustomMods\BattleHarbingerAssets" />
-
-		<Message text="Copied to mod publishing folder (v2 version)." />
 	</Target>
 	
 </Project>
