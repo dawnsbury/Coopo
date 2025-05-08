@@ -38,8 +38,7 @@ public static class TenguAncestryLoader
     public static void LoadMod()
     {
         // enable the debugger in debug mode, and assert that the right version of the game's DLL is being built against
-#if DEBUG
-        
+#if DEBUG  
         //Debugger.Launch();
 #endif
         ModManager.AssertV3();

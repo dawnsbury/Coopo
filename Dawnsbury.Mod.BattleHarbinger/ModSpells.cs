@@ -17,9 +17,7 @@ using Dawnsbury.Modding;
 using Microsoft.Xna.Framework;
 
 using Dawnsbury.Mods.BattleHarbinger.RegisteredValues;
-#if !DAWNSBURY_V2
 using Dawnsbury.Core.Animations.AuraAnimations;
-#endif
 
 namespace Dawnsbury.Mods.BattleHarbinger
 {
@@ -128,13 +126,8 @@ namespace Dawnsbury.Mods.BattleHarbinger
                 if (qEffect.Tag == null) return (initialRadius, true);
                 else return ((int, bool))qEffect.Tag;
             };
-#if DAWNSBURY_V2
-            AuraAnimation auraAnimation = caster.AnimationData.AddAuraAnimation(isBenediction ? IllustrationName.BlessCircle : IllustrationName.BaneCircle, initialRadius);
-            auraAnimation.Color = isBenediction ? Color.Green : Color.MediumPurple;
-#else
             AuraAnimation auraAnimation = new MagicCircleAuraAnimation(isBenediction ? BenedictionCircleArt : MaledictionCircleArt, Color.White, initialRadius);
             caster.AnimationData.AddAuraAnimation(auraAnimation);
-#endif
             QEffect casterEffect = new QEffect(isBenediction ? "Benediction" : "Malediction", "[this condition has no description]", ExpirationCondition.Never, caster, IllustrationName.None)
             {
                 WhenExpires = delegate
@@ -143,11 +136,7 @@ namespace Dawnsbury.Mods.BattleHarbinger
                 },
                 // first item is the radius of the aura, second is if it's been sustained this turn
                 Tag = (initialRadius, true),
-#if DAWNSBURY_V2
-                StartOfYourTurn = async delegate (QEffect self, Creature _)
-#else
                 StartOfYourEveryTurn = async delegate (QEffect self, Creature _)
-#endif
                 {
                     self.Tag = (DeconstructTag(self).Item1, false);
                 },
@@ -222,11 +211,7 @@ namespace Dawnsbury.Mods.BattleHarbinger
                                         ExpiresAt = ExpirationCondition.Ephemeral
                                     });
                                 // battle aura; use class DC
-#if !DAWNSBURY_V2
                                 CheckResult checkResult = CommonSpellEffects.RollSavingThrow(enemy, action, Defense.Will, self.Owner.ClassDC());
-#else
-                                CheckResult checkResult = CommonSpellEffects.RollSavingThrow(enemy, action, Defense.Will, (Creature? cr) => self.Owner.ClassDC());
-#endif
                                 enemy.AddQEffect(new QEffect(ExpirationCondition.Never)
                                 {
                                     Id = ModQEffectId.RolledAgainstMalediction,
@@ -274,11 +259,7 @@ namespace Dawnsbury.Mods.BattleHarbinger
                     auraAnimation.MoveTo(0f);
                 },
                 Tag = (initialRadius, true),
-#if DAWNSBURY_V2
-                StartOfYourTurn = async delegate (QEffect self, Creature _)
-#else
                 StartOfYourEveryTurn = async delegate (QEffect self, Creature _)
-#endif
                 {
                     self.Tag = (DeconstructTag(self).Item1, false);
                 },
@@ -352,11 +333,7 @@ namespace Dawnsbury.Mods.BattleHarbinger
                                         ExpiresAt = ExpirationCondition.Ephemeral
                                     });
                                 // battle aura; use class DC
-#if !DAWNSBURY_V2
                                 CheckResult checkResult = CommonSpellEffects.RollSavingThrow(enemy, action, Defense.Will, self.Owner.ClassDC());
-#else
-                                CheckResult checkResult = CommonSpellEffects.RollSavingThrow(enemy, action, Defense.Will, (Creature? cr) => self.Owner.ClassDC());
-#endif
                                 enemy.AddQEffect(new QEffect(ExpirationCondition.Never)
                                 {
                                     Id = QEffectId.RolledAgainstBane,

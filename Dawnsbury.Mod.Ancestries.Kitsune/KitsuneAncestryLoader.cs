@@ -35,14 +35,10 @@ public static class KitsuneAncestryLoader
     [DawnsburyDaysModMainMethod]
     public static void LoadMod()
     {
-#if DEBUG || DEBUG_V2
+#if DEBUG
         //Debugger.Launch();
 #endif
-#if DAWNSBURY_V2
-        ModManager.AssertV2();
-#else
         ModManager.AssertV3();
-#endif
 
         Feat KitsuneAncestry = new AncestrySelectionFeat(
             ModManager.RegisterFeatName("Kitsune"),
