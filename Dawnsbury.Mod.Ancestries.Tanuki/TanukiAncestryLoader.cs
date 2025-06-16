@@ -12,18 +12,30 @@ using Microsoft.Xna.Framework;
 using System.Diagnostics;
 using Dawnsbury.Audio;
 using Dawnsbury.Auxiliary;
+using Dawnsbury.Core.Mechanics.Targeting;
+using Dawnsbury.Display.Text;
+using Dawnsbury.Core.Animations;
+using Dawnsbury.Core.CharacterBuilder.FeatsDb.Common;
+using Dawnsbury.Core.Possibilities;
+using Dawnsbury.Core.CharacterBuilder.FeatsDb.Spellbook;
+using Dawnsbury.Core.CharacterBuilder.Spellcasting;
+using Dawnsbury.Core.Creatures.Parts;
+using Dawnsbury.Core.CharacterBuilder;
+using System;
 
 namespace Dawnsbury.Mods.Ancestries.Tanuki;
 
 // TODO:
 // * Homebrew some feats:
 //   * tanuki weapon familiarity; new tanuki weapon Umbrella, quarterstaff, halfling frying pan? or maybe more staffs?
-//   * turn false priest form into a more typical innate spellcasting feat
 //   * turn statue form into some kind of stance, something like mountain stance. or maybe just natural armor
-//   * Turn Failure Into Joke, Look on the Bright Side, Find Good in Bad. Tanuki 5. Whenever you roll a critical failure on an attack, as a reaction, you can gain temporary HP equal to your level.
-//   * Tenacity.Tanuki 5. You gain false life as an innate once-per-day spell. (or an action that behaves the same as False Life.)
-//   * homebrew Ponpoko as a weaker, low level version of Ponpoko-Pon! lower damage, and probably smaller cone (see Breath of the Dragon for comparison)
+//   * Turn Failure Into Joke, Look on the Bright Side, Find Good in Bad, Get Serious. Tanuki 5. Whenever you roll a critical failure on an attack, as a reaction, you can gain temporary HP equal to your level.
 
+// non-tanuki TODO:
+// * use the new Precombat preparations (when it gets added) to ask how Two-Hand weapons are held at combat start
+// * dragonblood versatile heritage? could even use the dawnsbury dragon types, would be cool
+// * spirit warrior archetype
+// * bring kitsune up to 5th level, too
 public static class TanukiAncestryLoader
 {
     static readonly Trait TanukiTrait = ModManager.RegisterTrait("Tanuki", new TraitProperties("Tanuki", true) { IsAncestryTrait = true });
@@ -32,13 +44,13 @@ public static class TanukiAncestryLoader
     public static void LoadMod()
     {
 #if DEBUG
-        //Debugger.Launch();
+        Debugger.Launch();
 #endif
         ModManager.AssertV3();
 
         Feat TanukiAncestry = new AncestrySelectionFeat(
             ModManager.RegisterFeatName("Tanuki"),
-            description: "These shapeshifting raccoon dog–like humanoids use their powers of illusion and transformation in ways more people should: for fun! Tanuki delight in pranks and practical jokes, especially those that allow them to take the high and mighty down a notch and show them what life is like for everyone else. Where other peoples take pride in their storied histories, noble traditions, or intricate ceremonies, tanuki take pride in their simplicity and disregard for the world’s many rules. Though some might claim this outlook reduces tanuki to uncouth rubes, tanuki feel it makes them more cultured; after all, one must know a rule to bend it, and one must understand a norm to break it.",
+            description: "These shapeshifting raccoon dog–like humanoids use their powers of illusion and transformation in ways more people should: for fun! Tanuki delight in pranks and practical jokes, especially those that allow them to take the high and mighty down a notch and show them what life is like for everyone else. Where other peoples take pride in their storied histories, noble traditions, or intricate ceremonies, tanuki take pride in their simplicity and disregard for the world's many rules. Though some might claim this outlook reduces tanuki to uncouth rubes, tanuki feel it makes them more cultured; after all, one must know a rule to bend it, and one must understand a norm to break it.",
             traits: [Trait.Humanoid, TanukiTrait],
             hp: 10,
             speed: 5,
@@ -118,6 +130,20 @@ public static class TanukiAncestryLoader
             });
 
         yield return new TrueFeat(
+            ModManager.RegisterFeatName("Ponpoko"),
+            1,
+            "If you play especially vigorously, the music of your belly drum can physically wound your foes.",
+            "You deal 1d4 sonic damage to all creatures in a 15-foot cone, with a basic Fortitude save equal to your spell DC or class DC, whichever is higher. Such vigorous drumming does leave your belly a bit sore, though, preventing you from using this ability again for 1d4 rounds.\n\nAt 3rd level and every 2 levels thereafter, the damage increases by 1d4.",
+            [TanukiTrait, Trait.Primal, Trait.Sonic, Trait.Homebrew]
+            ).WithOnCreature(cr =>
+            {
+                cr.AddQEffect(new QEffect("Ponpoko", $"Drum your belly to deal {S.HeightenedVariable(cr.MaximumSpellRank, 1)}d4 damage in a 15ft cone.")
+                {
+                    ProvideMainAction = (self) => new ActionPossibility(Ponpoko(cr)).WithPossibilityGroup(Constants.POSSIBILITY_GROUP_ADDITIONAL_NATURAL_STRIKE)
+                });
+            });
+
+        yield return new TrueFeat(
             ModManager.RegisterFeatName("Hasty Celebration {icon:Reaction}"),
             5,
             "After even the briefest success, you get caught up in the moment and begin to party, cheering your allies on.",
@@ -171,6 +197,93 @@ public static class TanukiAncestryLoader
                     
                 });
             });
+        // Tanuki Tenacity
+        yield return new TrueFeat(
+            ModManager.RegisterFeatName("Tanuki Tenacity", "Tanuki Tenacity {icon:Action}"),
+            5,
+            "You spend a moment daydreaming of the celebration you'll have once victory is achieved, and the thought invigorates you.",
+            "{b}Frequency {/b}Once per day\nYou gain 15 temporary Hit Points, which last until the end of the encounter.\n\nAt 7th level and every 2 levels thereafter, the temporary Hit Points increase by 5.",
+            [TanukiTrait, Trait.Concentrate, Trait.Homebrew]
+            ).WithOnCreature(cr =>
+            {
+                int tempHp = 5 * cr.MaximumSpellRank;
+                cr.AddQEffect(new QEffect("Tanuki Tenacity {icon:Action}", $"Once per day, gain {S.HeightenedVariable(tempHp, 15)} temporary Hit Points.")
+                {
+                    ProvideMainAction = (self) => cr.PersistentUsedUpResources.UsedUpActions.Contains("Tanuki Tenacity") ? null : new ActionPossibility(
+                        new CombatAction(cr, IllustrationName.EnduringMight, "Tanuki Tenacity", [TanukiTrait, Trait.Concentrate, Trait.Homebrew, Trait.Basic],
+                        "{i}You spend a moment daydreaming of the celebration you'll have once victory is achieved, and the thought invigorates you.{/i}\n\n" +
+                        $"{{b}}Frequency {{/b}}Once per day\nYou gain {S.HeightenedVariable(tempHp, 15)} temporary Hit Points, which last until the end of the encounter.",
+                        Target.Self())
+                            .WithActionCost(1)
+                            .WithSoundEffect(SfxName.MinorHealing)
+                            .WithEffectOnSelf(async (action, cr) =>
+                            {
+
+                                cr.GainTemporaryHP(5 * cr.MaximumSpellRank);
+                                cr.PersistentUsedUpResources.UsedUpActions.Add("Tanuki Tenacity");
+                            })
+                        ).WithPossibilityGroup(Constants.POSSIBILITY_GROUP_ANCESTRY_POWERS)
+                });
+            });
+        // False Priest Form
+        Spell divineLance = AllSpells.CreateModernSpellTemplate(SpellId.DivineLance, TanukiTrait);
+        Spell hauntingHymn = AllSpells.CreateModernSpellTemplate(SpellId.HauntingHymn, TanukiTrait);
+        yield return new TrueFeat(
+            ModManager.RegisterFeatName("False Priest Form"),
+            5,
+            "Nobody respects tanuki, but most everyone respects an esteemed priest, so what better form to take if you want to get by a little easier?",
+            $"You use your Deception modifier in place of your Religion modifier for any Religion check if it is higher, and you can cast {divineLance.ToSpellLink()} and {hauntingHymn.ToSpellLink()} as primal innate cantrips at will. Your spellcasting ability for these spells is Charisma.",
+            [TanukiTrait]
+            ).WithOnSheet(calculatedSheet =>
+            {
+                // increase religion proficiency to match deception (maybe change later to be more strong)
+                //calculatedSheet.AtEndOfRecalculation += (CalculatedCharacterSheetValues sheet) =>
+                //{
+                //    if (calculatedSheet.HasFeat(FeatName.ExpertDeception))
+                //    {
+                //        calculatedSheet.GrantFeat(FeatName.ExpertReligion);
+                //    }
+                //    else if (calculatedSheet.HasFeat(FeatName.Deception))
+                //    {
+                //        calculatedSheet.GrantFeat(FeatName.Religion);
+                //    }
+                //};
+                calculatedSheet.GrantFeat(FeatName.TrickMagicItem);
+                calculatedSheet.SetProficiency(Trait.Spell, Proficiency.Trained);
+            }).WithOnCreature(cr =>
+            {
+                cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TanukiTrait, Ability.Charisma, Trait.Primal)
+                    .WithSpells([divineLance.SpellId, hauntingHymn.SpellId], cr.MaximumSpellRank);
+            }).WithPermanentQEffect("beans", qEffect =>
+            {
+                //qEffect.StateCheck = (qEffect) =>
+                //{
+                //    if (qEffect.Owner.Possibilities is null) return;
+                //    List<ICombatAction> actions = qEffect.Owner.Possibilities.CreateActions(false);
+                //    foreach (ICombatAction action in actions)
+                //    {
+                //        if (action.Action.ActiveRollSpecification is null) continue;
+                //        if (action.Action.ActiveRollSpecification.TaggedDetermineBonus.InvolvedSkill == Skill.Religion)
+                //        {
+                //            action.Action.WithActiveRollSpecification(
+                //                new ActiveRollSpecification(TaggedChecks.SkillCheck(Skill.Deception), action.Action.ActiveRollSpecification.DetermineDC));
+                //            action.Action.Description = action.Action.Description.Replace("Religion", "{blue}Deception{/blue}");
+                //        }
+                //    }
+                //};
+
+                // TODO: do SOMETHING about this to make it less jank, idk what but do something
+                qEffect.BonusToAttackRolls = (qEffect, action, target) =>
+                {
+                    if (action.Action.ActiveRollSpecification is null) return null;
+                    if (action.Action.ActiveRollSpecification.TaggedDetermineBonus.InvolvedSkill == Skill.Religion)
+                    {
+                        int difference = qEffect.Owner.Skills.Get(Skill.Deception) - qEffect.Owner.Skills.Get(Skill.Religion);
+                        if (difference > 0) return new Bonus(difference, BonusType.Untyped, "Use Deception instead (False Priest)");
+                    }
+                    return null;
+                };
+            });
     }
 
     static IEnumerable<Feat> GetHeritages()
@@ -204,8 +317,8 @@ public static class TanukiAncestryLoader
 
         yield return new HeritageSelectionFeat(
             ModManager.RegisterFeatName("Virtuous Tanuki"),
-            "Many tanuki carry a gourd of alcohol to remind themselves to act with virtue, and by these standards, you’re quite virtuous indeed.",
-            "You gain poison resistance equal to half your level (minimum 1). You can eat and drink things when you’re sickened."
+            "Many tanuki carry a gourd of alcohol to remind themselves to act with virtue, and by these standards, you're quite virtuous indeed.",
+            "You gain poison resistance equal to half your level (minimum 1). You can eat and drink things when you're sickened."
             ).WithOnCreature(delegate (Creature cr)
             {
                 cr.AddQEffect(QEffect.DamageResistance(DamageKind.Poison, cr.MaximumSpellRank));
@@ -228,6 +341,7 @@ public static class TanukiAncestryLoader
                 });
             });
 
+        // TODO: add an action block for Tactical Retreat - it doesn't actually show what it does right now.
         yield return new HeritageSelectionFeat(
             ModManager.RegisterFeatName("Courageous Tanuki"),
             "Your heart beats with the courage of those who came before you, giving you the kind of bravery only a tanuki can demonstrate.",
@@ -307,5 +421,24 @@ public static class TanukiAncestryLoader
                 else return null;
             }
         };
+    }
+    static CombatAction Ponpoko(Creature cr)
+    {
+        int dc = cr.ClassOrSpellDC();
+        return new CombatAction(cr, IllustrationName.StarHit, "Ponpoko", [TanukiTrait, Trait.Primal, Trait.Sonic],
+            $"You deal {S.HeightenedVariable(cr.MaximumSpellRank, 1)}d4 sonic damage to all creatures in a 15-foot cone, with a DC {{b}}{dc}{{/b}} basic Fortitude save. You then cannot use this ability again for 1d4 rounds.",
+            Target.FifteenFootCone()
+            ).WithSavingThrow(new SavingThrow(Defense.Fortitude, dc))
+            .WithActionCost(2)
+            .WithProjectileCone(IllustrationName.StarHit, 15, ProjectileKind.Cone)
+            .WithSoundEffect(SfxName.Drum)
+            .WithEffectOnEachTarget(async (spell, caster, target, result) =>
+            {
+                await CommonSpellEffects.DealBasicDamage(spell, caster, target, result, cr.MaximumSpellRank + "d4", DamageKind.Sonic);
+            })
+            .WithEffectOnSelf(cr =>
+            {
+                cr.AddQEffect(QEffect.CannotUseForXRound("Ponpoko", cr, R.Next(2, 5)));
+            });
     }
 }
