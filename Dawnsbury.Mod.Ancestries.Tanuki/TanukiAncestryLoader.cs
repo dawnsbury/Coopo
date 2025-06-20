@@ -32,10 +32,10 @@ namespace Dawnsbury.Mods.Ancestries.Tanuki;
 //   * Turn Failure Into Joke, Look on the Bright Side, Find Good in Bad, Get Serious. Tanuki 5. Whenever you roll a critical failure on an attack, as a reaction, you can gain temporary HP equal to your level.
 
 // non-tanuki TODO:
-// * use the new Precombat preparations (when it gets added) to ask how Two-Hand weapons are held at combat start
 // * dragonblood versatile heritage? could even use the dawnsbury dragon types, would be cool
 // * spirit warrior archetype
 // * bring kitsune up to 5th level, too
+// * oscillating wave psychic subclass?
 public static class TanukiAncestryLoader
 {
     static readonly Trait TanukiTrait = ModManager.RegisterTrait("Tanuki", new TraitProperties("Tanuki", true) { IsAncestryTrait = true });
@@ -283,6 +283,42 @@ public static class TanukiAncestryLoader
                     }
                     return null;
                 };
+            });
+        // Statue Form
+        yield return new TrueFeat(
+            ModManager.RegisterFeatName("Statue Form {icon:Reaction}"),
+            5,
+            "Tanuki tend to be on the squishier side, but you know how to toughen up when it counts.",
+            "{b}Frequency{/b} Once per day\n{b}Trigger{/b} You are hit with a Strike that deals physical damage.\nYou turn into a stone statue, gaining resistance 5 to physical damage until the beginning of your next turn.",
+            [TanukiTrait, Trait.Concentrate, Trait.Primal, Trait.Polymorph, Trait.Homebrew]
+            ).WithOnCreature(cr =>
+            {
+                int tempHp = 5 * cr.MaximumSpellRank;
+                cr.AddQEffect(new QEffect("Statue Form {icon:Reaction}", $"Once per day when hit by a Strike, turn to stone, gaining resistance 5 to physical damage.")
+                {
+                    YouAreDealtDamageEvent = async (self, damageEvent) =>
+                    {
+                        if (cr.PersistentUsedUpResources.UsedUpActions.Contains("Statue Form")) return;
+                        if (damageEvent.CombatAction == null) return;
+                        if (!damageEvent.CombatAction.HasTrait(Trait.Strike)) return;
+                        //if (damageEvent.KindedDamages.Select(d => [DamageKind.Piercing, DamageKind.Bludgeoning, DamageKind.Slashing].Contains(d.DamageKind)).Sum(d => d.ResolvedDamage))
+                        bool reactionUsed = await self.Owner.AskToUseReaction("You are about to take physical damage. Use Statue Form to gain resistance 5 to physical damage until the beginning of your next turn?", IllustrationName.Stoneskin);
+                        if (!reactionUsed) return;
+                        cr.AddQEffect(new QEffect("Statue Form", "You have resistance 5 to physical damage until the beginning of your next turn.")
+                        {
+                            ExpiresAt = ExpirationCondition.ExpiresAtStartOfYourTurn,
+                            StateCheck = (qEffect) =>
+                            {
+                                qEffect.Owner.WeaknessAndResistance.AddResistance(DamageKind.Bludgeoning, 5);
+                                qEffect.Owner.WeaknessAndResistance.AddResistance(DamageKind.Slashing, 5);
+                                qEffect.Owner.WeaknessAndResistance.AddResistance(DamageKind.Piercing, 5);
+                            },
+                            CountsAsABuff = true,
+                            Illustration = IllustrationName.Stoneskin
+                        });
+                        cr.PersistentUsedUpResources.UsedUpActions.Add("Statue Form");
+                    },
+                });
             });
     }
 

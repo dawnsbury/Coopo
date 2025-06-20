@@ -37,35 +37,35 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
         {
             ModManager.RegisterNewItemIntoTheShop("katana", (ItemName name) =>
             {
-                return new Item(name, new ModdedIllustration("TenguAssets/katana.png"), "katana", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.DeadlyD8, TwoHandD10, Trait.VersatileP])
+                return new Item(name, new ModdedIllustration("TenguAssets/katana.png"), "katana", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.DeadlyD8, TwoHandD10, Trait.VersatileP, Trait.Mod])
                 {
                     WeaponProperties = new WeaponProperties("1d6", DamageKind.Slashing)
                 }.WithMainTrait(Katana).ImplementTwoHand(6, 10);
             });
             ModManager.RegisterNewItemIntoTheShop("khakkara", (ItemName name) =>
             {
-                return new Item(name, new ModdedIllustration("TenguAssets/khakkara.png"), "khakkara", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Club, Trait.MonkWeapon, TwoHandD10, Trait.VersatileP])
+                return new Item(name, new ModdedIllustration("TenguAssets/khakkara.png"), "khakkara", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Club, Trait.MonkWeapon, TwoHandD10, Trait.VersatileP, Trait.Mod])
                 {
                     WeaponProperties = new WeaponProperties("1d6", DamageKind.Bludgeoning)
                 }.WithMainTrait(Khakkara).ImplementTwoHand(6, 10);
             });
             ModManager.RegisterNewItemIntoTheShop("temple sword", (ItemName name) =>
             {
-                return new Item(name, new ModdedIllustration("TenguAssets/templeSword.png"), "temple sword", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.MonkWeapon, Trait.Trip])
+                return new Item(name, new ModdedIllustration("TenguAssets/templeSword.png"), "temple sword", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.MonkWeapon, Trait.Trip, Trait.Mod])
                 {
                     WeaponProperties = new WeaponProperties("1d8", DamageKind.Slashing)
                 }.WithMainTrait(TempleSword);
             });
             ModManager.RegisterNewItemIntoTheShop("wakizashi", (ItemName name) =>
             {
-                return new Item(name, new ModdedIllustration("TenguAssets/wakizashi.png"), "wakizashi", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.Agile, Trait.DeadlyD8, Trait.Finesse, Trait.VersatileP])
+                return new Item(name, new ModdedIllustration("TenguAssets/wakizashi.png"), "wakizashi", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.Agile, Trait.DeadlyD8, Trait.Finesse, Trait.VersatileP, Trait.Mod])
                 {
                     WeaponProperties = new WeaponProperties("1d4", DamageKind.Slashing)
                 }.WithMainTrait(Wakizashi);
             });
             ModManager.RegisterNewItemIntoTheShop("tengu gale blade", (ItemName name) =>
             {
-                return new Item(name, new ModdedIllustration("TenguAssets/tenguGaleBlade.png"), "tengu gale blade", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.Agile, Trait.Disarm, Trait.Finesse, TenguAncestryLoader.TenguTrait])
+                return new Item(name, new ModdedIllustration("TenguAssets/tenguGaleBlade.png"), "tengu gale blade", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.Agile, Trait.Disarm, Trait.Finesse, TenguAncestryLoader.TenguTrait, Trait.Mod])
                 {
                     WeaponProperties = new WeaponProperties("1d6", DamageKind.Slashing)
                 }.WithMainTrait(TenguGaleBlade);
@@ -73,7 +73,7 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
             ModManager.RegisterNewItemIntoTheShop("nodachi", (ItemName name) =>
             {
                 return new Item(name, new ModdedIllustration("TenguAssets/nodachi.png"), "nodachi", level: 0, price: 6,
-                    [Trait.Weapon, Trait.Melee, Trait.Advanced, Trait.Sword, Trait.TwoHanded, Trait.DeadlyD12, Trait.Reach, Brace])
+                    [Trait.Weapon, Trait.Melee, Trait.Advanced, Trait.Sword, Trait.TwoHanded, Trait.DeadlyD12, Trait.Reach, Brace, Trait.Mod])
                 {
                     WeaponProperties = new WeaponProperties("1d8", DamageKind.Slashing)
                 }.WithMainTrait(Nodachi).ImplementBrace();
@@ -81,7 +81,7 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
             ModManager.RegisterNewItemIntoTheShop("bastard sword", (ItemName name) =>
             {
                 return new Item(name, new ModdedIllustration("TenguAssets/bastardSword.png"), "bastard sword", level: 0, price: 4,
-                    [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, TwoHandD12])
+                    [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, TwoHandD12, Trait.Mod])
                 {
                     WeaponProperties = new WeaponProperties("1d8", DamageKind.Slashing)
                 }.WithMainTrait(BastardSword).ImplementTwoHand(8, 12);
