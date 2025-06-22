@@ -27,13 +27,10 @@ namespace Dawnsbury.Mods.Ancestries.Tanuki;
 
 // TODO:
 // * Homebrew some feats:
-//   * tanuki weapon familiarity; new tanuki weapon Umbrella, quarterstaff, halfling frying pan? or maybe more staffs?
-//   * turn statue form into some kind of stance, something like mountain stance. or maybe just natural armor
-//   * Turn Failure Into Joke, Look on the Bright Side, Find Good in Bad, Get Serious. Tanuki 5. Whenever you roll a critical failure on an attack, as a reaction, you can gain temporary HP equal to your level.
+//   * tanuki weapon familiarity; new tanuki weapon Umbrella, quarterstaff, halfling frying pan, saucepot (like the legend where a tanuki boils someone's wife into a stew)? or maybe more staffs?
 
 // non-tanuki TODO:
 // * dragonblood versatile heritage? could even use the dawnsbury dragon types, would be cool
-// * spirit warrior archetype
 // * bring kitsune up to 5th level, too
 // * oscillating wave psychic subclass?
 public static class TanukiAncestryLoader
@@ -233,7 +230,7 @@ public static class TanukiAncestryLoader
             5,
             "Nobody respects tanuki, but most everyone respects an esteemed priest, so what better form to take if you want to get by a little easier?",
             $"Your Religion proficiency increases to equal your Deception proficiency, and you use your Deception modifier for Religion checks if it is higher. You can cast {divineLance.ToSpellLink()} and {hauntingHymn.ToSpellLink()} as primal innate cantrips at will. Your spellcasting ability for these spells is Charisma.",
-            [TanukiTrait]
+            [TanukiTrait, Trait.Homebrew]
             ).WithOnSheet(calculatedSheet =>
             {
                 // increase religion proficiency to match deception (maybe change later to be more strong)
