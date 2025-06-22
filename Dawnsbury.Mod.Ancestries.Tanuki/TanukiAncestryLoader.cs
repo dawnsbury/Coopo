@@ -232,46 +232,30 @@ public static class TanukiAncestryLoader
             ModManager.RegisterFeatName("False Priest Form"),
             5,
             "Nobody respects tanuki, but most everyone respects an esteemed priest, so what better form to take if you want to get by a little easier?",
-            $"You use your Deception modifier in place of your Religion modifier for any Religion check if it is higher, and you can cast {divineLance.ToSpellLink()} and {hauntingHymn.ToSpellLink()} as primal innate cantrips at will. Your spellcasting ability for these spells is Charisma.",
+            $"Your Religion proficiency increases to equal your Deception proficiency, and you use your Deception modifier for Religion checks if it is higher. You can cast {divineLance.ToSpellLink()} and {hauntingHymn.ToSpellLink()} as primal innate cantrips at will. Your spellcasting ability for these spells is Charisma.",
             [TanukiTrait]
             ).WithOnSheet(calculatedSheet =>
             {
                 // increase religion proficiency to match deception (maybe change later to be more strong)
-                //calculatedSheet.AtEndOfRecalculation += (CalculatedCharacterSheetValues sheet) =>
-                //{
-                //    if (calculatedSheet.HasFeat(FeatName.ExpertDeception))
-                //    {
-                //        calculatedSheet.GrantFeat(FeatName.ExpertReligion);
-                //    }
-                //    else if (calculatedSheet.HasFeat(FeatName.Deception))
-                //    {
-                //        calculatedSheet.GrantFeat(FeatName.Religion);
-                //    }
-                //};
-                calculatedSheet.GrantFeat(FeatName.TrickMagicItem);
+                calculatedSheet.AtEndOfRecalculation += (CalculatedCharacterSheetValues sheet) =>
+                {
+                    if (calculatedSheet.HasFeat(FeatName.ExpertDeception))
+                    {
+                        calculatedSheet.GrantFeat(FeatName.ExpertReligion);
+                    }
+                    else if (calculatedSheet.HasFeat(FeatName.Deception))
+                    {
+                        calculatedSheet.GrantFeat(FeatName.Religion);
+                    }
+                };
+
                 calculatedSheet.SetProficiency(Trait.Spell, Proficiency.Trained);
             }).WithOnCreature(cr =>
             {
                 cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TanukiTrait, Ability.Charisma, Trait.Primal)
                     .WithSpells([divineLance.SpellId, hauntingHymn.SpellId], cr.MaximumSpellRank);
-            }).WithPermanentQEffect("beans", qEffect =>
+            }).WithPermanentQEffect("You use your Deception modifier for Religion checks, if it's higher.", qEffect =>
             {
-                //qEffect.StateCheck = (qEffect) =>
-                //{
-                //    if (qEffect.Owner.Possibilities is null) return;
-                //    List<ICombatAction> actions = qEffect.Owner.Possibilities.CreateActions(false);
-                //    foreach (ICombatAction action in actions)
-                //    {
-                //        if (action.Action.ActiveRollSpecification is null) continue;
-                //        if (action.Action.ActiveRollSpecification.TaggedDetermineBonus.InvolvedSkill == Skill.Religion)
-                //        {
-                //            action.Action.WithActiveRollSpecification(
-                //                new ActiveRollSpecification(TaggedChecks.SkillCheck(Skill.Deception), action.Action.ActiveRollSpecification.DetermineDC));
-                //            action.Action.Description = action.Action.Description.Replace("Religion", "{blue}Deception{/blue}");
-                //        }
-                //    }
-                //};
-
                 // TODO: do SOMETHING about this to make it less jank, idk what but do something
                 qEffect.BonusToAttackRolls = (qEffect, action, target) =>
                 {
