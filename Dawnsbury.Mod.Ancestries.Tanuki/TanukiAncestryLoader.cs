@@ -285,9 +285,13 @@ public static class TanukiAncestryLoader
                         if (cr.PersistentUsedUpResources.UsedUpActions.Contains("Statue Form")) return;
                         if (damageEvent.CombatAction == null) return;
                         if (!damageEvent.CombatAction.HasTrait(Trait.Strike)) return;
-                        //if (damageEvent.KindedDamages.Select(d => [DamageKind.Piercing, DamageKind.Bludgeoning, DamageKind.Slashing].Contains(d.DamageKind)).Sum(d => d.ResolvedDamage))
+                        if (!damageEvent.KindedDamages.Where(kd => kd.DamageKind == DamageKind.Slashing ||
+                            kd.DamageKind == DamageKind.Piercing ||
+                            kd.DamageKind == DamageKind.Bludgeoning).Any()) return;
                         bool reactionUsed = await self.Owner.AskToUseReaction("You are about to take physical damage. Use Statue Form to gain resistance 5 to physical damage until the beginning of your next turn?", IllustrationName.Stoneskin);
                         if (!reactionUsed) return;
+                        // TODO: need to reduce the triggering damage also
+                        damageEvent.ReduceBy(5, "Statue Form");
                         cr.AddQEffect(new QEffect("Statue Form", "You have resistance 5 to physical damage until the beginning of your next turn.")
                         {
                             ExpiresAt = ExpirationCondition.ExpiresAtStartOfYourTurn,
