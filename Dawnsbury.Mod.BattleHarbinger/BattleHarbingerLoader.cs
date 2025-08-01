@@ -22,6 +22,8 @@ using Dawnsbury.Display.Text;
 
 namespace Dawnsbury.Mods.BattleHarbinger;
 
+// TODO: remaster spells mod can clash cause spells like True Strike are removed (so they cant be prepared). give that a look and try to resolve.
+
 public static class BattleHarbingerLoader
 {
 
@@ -125,7 +127,7 @@ public static class BattleHarbingerLoader
                             .Where(action => action.HasTrait(Trait.SustainASpell) && action.HasTrait(ModTrait.BattleAura));
                         if (battleAuraSustains.Any())
                         {
-                            ChoiceButtonOption choice = await attacker.AskForChoiceAmongButtons(IllustrationName.None, "You successfully damaged an enemy. Which battle aura would you like to Sustain with Tandem Onslaught?", battleAuraSustains.Select(action => action.Name).Append("None").ToArray());
+                            ChoiceButtonOption choice = await attacker.AskForChoiceAmongButtons(IllustrationName.None, "You successfully damaged an enemy. Which battle aura would you like to Sustain with Tandem Onslaught?", [.. battleAuraSustains.Select(action => action.Name), "None"]);
                             if (choice.Text == "None") return;
                             CombatAction? chosen = battleAuraSustains.FirstOrDefault(action => action.Name == choice.Text);
                             if (chosen == null) return;
@@ -264,10 +266,13 @@ public static class BattleHarbingerLoader
                 // Spellcasting Modifications
                 sheet.AtEndOfRecalculation += (CalculatedCharacterSheetValues sheet) =>
                 {
+                    // make sure to use this instead of sheet.CurrentLevel, that can sometimes be inaccurate
+                    int level = sheet.Sheet.MaximumLevel;
+
                     // remove last spell slot of each level, to reduce the max per spell level to 2
                     sheet.PreparedSpells[Trait.Cleric].Slots.RemoveAll((PreparedSpellSlot slot) => slot.Key.EndsWith("-3"));
                     // remove one more for odd levels less than 5
-                    if (sheet.CurrentLevel <= 4 && sheet.CurrentLevel % 2 == 1)
+                    if (level <= 4 && level % 2 == 1)
                         sheet.PreparedSpells[Trait.Cleric].Slots.RemoveAll((PreparedSpellSlot slot) => slot.Key == $"Cleric:Spell{sheet.MaximumSpellLevel}-2");
                     // remove spell slots of levels below maxSpellLevel - 1
                     for (int i = 1; i < sheet.MaximumSpellLevel - 1; i++)
@@ -282,8 +287,11 @@ public static class BattleHarbingerLoader
                 sheet.AllFeats.RemoveAll(feat => feat.HasTrait(Trait.DivineFont));
                 sheet.AtEndOfRecalculation += (CalculatedCharacterSheetValues sheet) =>
                 {
+                    // make sure to use this instead of sheet.CurrentLevel, that can sometimes be inaccurate
+                    int level = sheet.Sheet.MaximumLevel;
+
                     // Grant battle font slots
-                    int slotCount = sheet.CurrentLevel >= 5 ? 5 : 4;
+                    int slotCount = level >= 5 ? 5 : 4;
                     List<SpellId> extraAuras = [];
                     if (sheet.HasFeat(ModFeatName.AuraEnhancement))
                     {
