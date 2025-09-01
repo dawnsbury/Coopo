@@ -22,6 +22,9 @@ using System.Diagnostics;
 
 namespace Dawnsbury.Mods.Ancestries.Kitsune;
 
+// TODO:
+// level 9 feat: Fox Trick - Once per encounter, you Create a Diversion or Hide as a free action.
+
 public static class KitsuneAncestryLoader
 {
     static readonly public Trait KitsuneTrait = ModManager.RegisterTrait("Kitsune", new TraitProperties("Kitsune", true) { IsAncestryTrait = true });
@@ -142,22 +145,7 @@ public static class KitsuneAncestryLoader
             "Your magic has crystallized into a spherical stone.",
             "You gain a Star Orb, a magical item that resembles a mundane stone. Once per day, you can activate the item in one of two ways:\n\n{b}Activate - Orb Restoration{/b} {icon:Action}; You recover 1d8 hit points times half your level (minimum 1d8)\n\n{b}Activate - Orb Focus{/b} {icon:Action}; You restore 1 focus point to your focus pool, up to your usual maximum.",
             [KitsuneTrait]
-            )/*.WithOnCreature((CalculatedCharacterSheetValues sheet, Creature cr) =>
-            {
-                if (sheet.Sheet.Inventory.Backpack.Where(item => item?.ItemName == StarOrb.StarOrbItemName).Any()) return;
-                if (sheet.Sheet.Inventory.LeftHand?.ItemName == StarOrb.StarOrbItemName) return;
-                if (sheet.Sheet.Inventory.RightHand?.ItemName == StarOrb.StarOrbItemName) return;
-                Item toAdd = Items.CreateNew(StarOrb.StarOrbItemName);
-                sheet.Sheet.Inventory.AddAtEndOfBackpack(toAdd);
-                cr.AddQEffect(new QEffect() // rock tracker, stops the unworthy from possessing the stone
-                {
-                    StateCheck = (QEffect self) =>
-                    {
-                        
-                    }
-                });
-            });*/
-            .WithOnCreature((CalculatedCharacterSheetValues sheet, Creature cr) =>
+            ).WithOnCreature((CalculatedCharacterSheetValues sheet, Creature cr) =>
             {
                 if (cr.PersistentUsedUpResources.UsedUpActions.Contains("StarOrb")) return;
                 else cr.AddQEffect(new QEffect("Star Orb", $"Once per day, drain your star orb to regain {S.HeightenedVariable(cr.MaximumSpellRank, 1)}d8 HP or recover 1 focus point.")

@@ -26,13 +26,14 @@ using System;
 namespace Dawnsbury.Mods.Ancestries.Tanuki;
 
 // TODO:
+// * feat 9: Mud Boat's Passage - you can walk over water at half speed (i think i already did this for tengu with a swim speed so copy that ig)
+// * feat 9: Rolling White Bottle Form - when you become prone, you can Crawl twice without prompting reactions
 // * Homebrew some feats:
 //   * tanuki weapon familiarity; new tanuki weapon Umbrella, quarterstaff, halfling frying pan, saucepot (like the legend where a tanuki boils someone's wife into a stew)? or maybe more staffs?
 
 // non-tanuki TODO:
 // * dragonblood versatile heritage? could even use the dawnsbury dragon types, would be cool
-// * bring kitsune up to 5th level, too
-// * oscillating wave psychic subclass?
+
 public static class TanukiAncestryLoader
 {
     static readonly Trait TanukiTrait = ModManager.RegisterTrait("Tanuki", new TraitProperties("Tanuki", true) { IsAncestryTrait = true });
@@ -41,7 +42,7 @@ public static class TanukiAncestryLoader
     public static void LoadMod()
     {
 #if DEBUG
-        Debugger.Launch();
+        //Debugger.Launch();
 #endif
         ModManager.AssertV3();
 

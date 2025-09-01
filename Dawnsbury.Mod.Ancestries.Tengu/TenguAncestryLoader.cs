@@ -30,6 +30,9 @@ namespace Dawnsbury.Mods.Ancestries.Tengu;
 // TODO: 
 // * Make tengu feather fan, probably just a boring innate spell. At least try making it go off class DC? and make it extend to ancestry cantrips?
 // * maybe make tengu weapon familiarity grant proficiency with the sword in your hand at the start of combat? proficiency with all swords is a little jank
+// * i think the weapon names might not be actually working on the workshop upload, saw a screenshot where they were just numbers
+// * level 9 feat: Soaring Form - You gain a fly speed. (maybe speed is reduced when flying over stuff?)
+// * level 9 feat: wind god's fan - ugrades tengu feather fan, which i didnt make yet. gotta do that first
 
 public static class TenguAncestryLoader
 {
@@ -40,7 +43,7 @@ public static class TenguAncestryLoader
     {
         // enable the debugger in debug mode, and assert that the right version of the game's DLL is being built against
 #if DEBUG  
-        //Debugger.Launch();
+        Debugger.Launch();
 #endif
         ModManager.AssertV3();
 
