@@ -209,7 +209,7 @@ public static class KitsuneAncestryLoader
                         if (!action.SavingThrow.Defense.IsSavingThrow()) return;
                         bool takeReaction = await you.AskToUseReaction("You are about to make a saving throw against a divine effect.\nDo you want to use {b}Invoke Celestial Privilege{/b} to gain a +1 circumstance bonus on all such saves until the start of your next turn?");
                         if (!takeReaction) return;
-                        you.Occupies.Overhead("Celestial Privilege", Color.Gold, $"{you.Name} invokes their Celestial Privilege against {action.Name}, gaining a +1 bonus against divine effects.");
+                        you.Overhead("Celestial Privilege", Color.Gold, $"{you.Name} invokes their Celestial Privilege against {action.Name}, gaining a +1 bonus against divine effects.");
                         cr.AddQEffect(new QEffect("Celestial Privilege", "You have a +1 circumstance bonus to saving throws against divine effects until the start of your next turn.")
                         {
                             BonusToDefenses = (QEffect self, CombatAction? action, Defense defense) => action?.HasTrait(Trait.Divine) == true ? new Bonus(1, BonusType.Circumstance, "Celestial Privilege") : null,

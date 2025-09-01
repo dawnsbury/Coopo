@@ -114,7 +114,7 @@ public static class TanukiAncestryLoader
                             // (will not be necessary in an upcoming update)
                             if (damageStuff.Kind == DamageKind.Fire && you.HP > 0)
                             {
-                                you.Occupies.Overhead("kachi-kachi!!", Color.Red, you.ToString() + " resists dying through Scorched on the Crackling Mountain!");
+                                you.Overhead("kachi-kachi!!", Color.Red, you.ToString() + " resists dying through Scorched on the Crackling Mountain!");
                                 you.IncreaseWounded();
                                 you.PersistentUsedUpResources.UsedUpActions.Add("Crackling Mountain");
                                 qEffect.ExpiresAt = ExpirationCondition.Immediately;
@@ -427,7 +427,7 @@ public static class TanukiAncestryLoader
                     if (qe.Source == null)
                     {
                         Debugger.Log(1, null, "qe.Source was null in CourageousFleeing!");
-                        qe.Owner.Occupies.Overhead("qe.Source was null!", Color.Crimson, "qe.Source was null in CourageousFleeing!");
+                        qe.Owner.Overhead("qe.Source was null!", Color.Crimson, "qe.Source was null in CourageousFleeing!");
                         return;
                     }
                     QEffect tempFleeing = QEffect.Fleeing(qe.Source).WithExpirationAtEndOfOwnerTurn();
