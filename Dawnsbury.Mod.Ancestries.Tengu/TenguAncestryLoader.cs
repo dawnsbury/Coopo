@@ -132,6 +132,16 @@ public static class TenguAncestryLoader
         }
     }
 
+    static public bool IsAssemblyExists(string assemblyName)
+    {
+        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            if (assembly.FullName.StartsWith(assemblyName))
+                return true;
+        }
+        return false;
+    }
+
     static IEnumerable<Feat> GetAncestryFeats()
     {
         Spell marinersFire = AllSpells.CreateModernSpellTemplate(TenguSpells.MarinersFireSpellId, TenguTrait);

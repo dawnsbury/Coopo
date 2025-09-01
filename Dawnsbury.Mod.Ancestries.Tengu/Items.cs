@@ -2,6 +2,7 @@
 using Dawnsbury.Core.CharacterBuilder.FeatsDb.Common;
 using Dawnsbury.Core.CharacterBuilder.Selections.Options;
 using Dawnsbury.Core.CombatActions;
+using Dawnsbury.Core.Coroutines.Options;
 using Dawnsbury.Core.Creatures;
 using Dawnsbury.Core.Creatures.Parts;
 using Dawnsbury.Core.Mechanics;
@@ -22,6 +23,8 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
     internal static class Items
     {
         static public readonly Trait TenguWeaponTrait = ModManager.RegisterTrait("Tengu Weapon", new TraitProperties("Tengu Weapon", false) { ProficiencyName = "Tengu weapons" });
+        public static Trait Brace;
+        private static bool externalBraceUsed;
 
         static public readonly Trait Katana = ModManager.RegisterTrait("Katana", new TraitProperties("Katana", false));
         static public readonly Trait Khakkara = ModManager.RegisterTrait("Khakkara", new TraitProperties("Khakkara", false));
@@ -35,6 +38,21 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
 
         public static void RegisterItems()
         {
+            // check if a brace trait already exists (e.g. from More Basic Actions); if it does, then use that, otherwise use our own
+            // TODO: optional-dependencies.txt isnt working, figure that out
+            // C:\Program Files (x86)\Steam\steamapps\workshop\content\2693730\3398206093
+            //if (TenguAncestryLoader.IsAssemblyExists("MoreBasicActions") && ModManager.TryParse<Trait>("Brace", out Brace))
+            if (ModManager.TryParse<Trait>("Brace", out Brace))
+            {
+                externalBraceUsed = true;
+            }
+            else
+            {
+                externalBraceUsed = false;
+                Brace = ModManager.RegisterTrait("Brace",
+                new TraitProperties("Brace", true, "A brace weapon is effective at damaging moving opponents. You gain the {i}Brace Your Weapon{/i} action, which allows you to immediately end your turn in exchange for an extra 2 precision damage per weapon die on reaction Strikes."));
+            }
+
             ModManager.RegisterNewItemIntoTheShop("katana", (ItemName name) =>
             {
                 return new Item(name, new ModdedIllustration("TenguAssets/katana.png"), "katana", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.DeadlyD8, TwoHandD10, Trait.VersatileP, Trait.Mod])
@@ -87,8 +105,7 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
                 }.WithMainTrait(BastardSword).ImplementTwoHand(8, 12);
             });
         }
-        public static Trait Brace = ModManager.RegisterTrait("Brace",
-            new TraitProperties("Brace", true, "A brace weapon is effective at damaging moving opponents. You gain the {i}Brace Your Weapon{/i} action, which allows you to immediately end your turn in exchange for an extra 2 precision damage per weapon die on reaction Strikes."));
+
         public static Trait TwoHandD10 = ModManager.RegisterTrait("Two-Hand 1d10",
             new TraitProperties("Two-Hand 1d10", true,
                 "This weapon can be wielded with two hands to change its weapon damage die to the indicated value. This change applies to all the weapon's damage dice."));
@@ -180,6 +197,8 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
         }
         private static Item ImplementBrace(this Item item)
         {
+            // don't do anything if another mod is already handling the brace implementation
+            if (externalBraceUsed) return item;
             // warning doesnt matter, ProvidesItemAction has incorrect nullability
             item.ProvidesItemAction = (Creature cr, Item self) => BraceYourWeapon(cr, self);
             return item;
