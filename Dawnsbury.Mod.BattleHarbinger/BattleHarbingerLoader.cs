@@ -32,7 +32,7 @@ public static class BattleHarbingerLoader
     {
         // enable the debugger in debug mode, and assert that the right version of the game's DLL is being built against
 #if DEBUG
-        //Debugger.Launch();
+        Debugger.Launch();
 #endif
         ModManager.AssertV3();
 
@@ -287,6 +287,9 @@ public static class BattleHarbingerLoader
                 sheet.AllFeats.RemoveAll(feat => feat.HasTrait(Trait.DivineFont));
                 sheet.AtEndOfRecalculation += (CalculatedCharacterSheetValues sheet) =>
                 {
+                    // Remove all divine font slots (removing the feat doesn't actually work, cause of AtEndOfRecalculation shenanigans)
+                    sheet.PreparedSpells[Trait.Cleric].Slots.RemoveAll(slot => slot.Key.StartsWith("HealingFont"));
+                    sheet.PreparedSpells[Trait.Cleric].Slots.RemoveAll(slot => slot.Key.StartsWith("HarmfulFont"));
                     // make sure to use this instead of sheet.CurrentLevel, that can sometimes be inaccurate
                     int level = sheet.Sheet.MaximumLevel;
 
