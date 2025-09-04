@@ -195,7 +195,7 @@ public static class KitsuneAncestryLoader
                 SpellMysteriesSubfeat("KitsuneSpellMysteriesBane", SpellId.Bane),
                 SpellMysteriesSubfeat("KitsuneSpellMysteriesSanctuary", SpellId.Sanctuary)
                 ])
-            .WithPrerequisite(sheet => sheet.Sheet.ToCreature(sheet.CurrentLevel).Spellcasting?.GetSourceByOrigin(KitsuneTrait) != null, "You must have at least one innate kitsune spell.")
+            .WithPrerequisite(sheet => sheet.HasFeat(KitsuneSpellFamiliarityFeatName) || sheet.Heritage?.Name == "Empty Sky Kitsune", "You must have at least one innate kitsune spell.")
             .WithOnSheet((sheet) =>
             {
                 sheet.SetProficiency(Trait.Spell, Proficiency.Trained);
