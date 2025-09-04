@@ -29,6 +29,8 @@ public static class KitsuneAncestryLoader
 {
     static readonly public Trait KitsuneTrait = ModManager.RegisterTrait("Kitsune", new TraitProperties("Kitsune", true) { IsAncestryTrait = true });
 
+    static Trait SpellFamiliaritySubfeatTrait = ModManager.RegisterTrait("spellFamiliaritySubfeat", new TraitProperties("", false));
+
     static FeatName FrozenWindKitsuneFeatName = ModManager.RegisterFeatName("Frozen Wind Kitsune");
 
     static FeatName KitsuneSpellFamiliarityFeatName = ModManager.RegisterFeatName("Kitsune Spell Familiarity");
@@ -119,7 +121,7 @@ public static class KitsuneAncestryLoader
                 ModManager.RegisterFeatName(featName, spell.Name),
                 null,
                 $"You can cast {AllSpells.CreateSpellLink(spellId, KitsuneTrait)} as a divine innate spell at will. Your spellcasting ability for this cantrip is Charisma.",
-                [KitsuneTrait],
+                [KitsuneTrait, SpellFamiliaritySubfeatTrait],
                 null).WithIllustration(spell.Illustration).WithRulesBlockForSpell(spellId).WithOnCreature(delegate (Creature cr)
                 {
                     cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, KitsuneTrait, Ability.Charisma, Trait.Divine).WithSpells([spellId], cr.MaximumSpellRank);
@@ -135,7 +137,8 @@ public static class KitsuneAncestryLoader
                 SpellFamiliaritySubfeat("KitsuneSpellFamiliarityDaze", SpellId.Daze),
                 SpellFamiliaritySubfeat("KitsuneSpellFamiliarityForbiddingWard", SpellId.ForbiddingWard)
                 ]
-            ).WithOnSheet((sheet) =>
+            ).WithPrerequisite(sheet => sheet.Heritage?.Name != "Empty Sky Kitsune", "You already have this feat from your heritage.")
+            .WithOnSheet((sheet) =>
             {
                 sheet.SetProficiency(Trait.Spell, Proficiency.Trained);
             });
@@ -167,6 +170,35 @@ public static class KitsuneAncestryLoader
                         };
                     }
                 });
+            });
+        
+        Feat SpellMysteriesSubfeat(string featName, SpellId spellId)
+        {
+            Spell spell = AllSpells.CreateModernSpellTemplate(spellId, KitsuneTrait);
+            return new Feat(
+                ModManager.RegisterFeatName(featName, spell.Name),
+                null,
+                $"You can cast {AllSpells.CreateSpellLink(spellId, KitsuneTrait)} as a divine innate spell at will. Your spellcasting ability for this spell is Charisma.",
+                [KitsuneTrait],
+                null).WithIllustration(spell.Illustration).WithRulesBlockForSpell(spellId).WithOnCreature(delegate (Creature cr)
+                {
+                    cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, KitsuneTrait, Ability.Charisma, Trait.Divine).WithSpells([spellId], 1);
+                });
+        }
+        yield return new TrueFeat(
+            ModManager.RegisterFeatName("Kitsune Spell Mysteries"),
+            level: 5,
+            "You know more kitsune magic.",
+            $"{{b}}Prerequisites{{/b}} You have at least one innate kitsune spell\n\nChoose {AllSpells.CreateSpellLink(SpellId.Bane, KitsuneTrait)} or {AllSpells.CreateSpellLink(SpellId.Sanctuary, KitsuneTrait)}. You can cast this spell as a 1st-level divine innate spell once per day. Your spellcasting ability for this spell is Charisma.",
+            [KitsuneTrait],
+            [
+                SpellMysteriesSubfeat("KitsuneSpellMysteriesBane", SpellId.Bane),
+                SpellMysteriesSubfeat("KitsuneSpellMysteriesSanctuary", SpellId.Sanctuary)
+                ])
+            .WithPrerequisite(sheet => sheet.Sheet.ToCreature(sheet.CurrentLevel).Spellcasting?.GetSourceByOrigin(KitsuneTrait) != null, "You must have at least one innate kitsune spell.")
+            .WithOnSheet((sheet) =>
+            {
+                sheet.SetProficiency(Trait.Spell, Proficiency.Trained);
             });
     }
 
@@ -248,10 +280,10 @@ public static class KitsuneAncestryLoader
         yield return new HeritageSelectionFeat(
             ModManager.RegisterFeatName("Empty Sky Kitsune"),
             "Your spirit is open to the secrets of beyond, granting you greater access to kitsune magic.",
-            "You gain the {b}Kitsune Spell Familiarity{/b} ancestry feat."
+            $"You gain the {{b}}Kitsune Spell Familiarity{{/b}} ancestry feat (gain {AllSpells.CreateSpellLink(SpellId.Daze, KitsuneTrait)} or {AllSpells.CreateSpellLink(SpellId.ForbiddingWard, KitsuneTrait)} as an innate cantrip)."
             ).WithOnSheet((CalculatedCharacterSheetValues sheet) =>
             {
-                sheet.AddSelectionOptionRightNow(new SingleFeatSelectionOption("emptySkySpellSelection", "Heritage Spell Choice", 0, (Feat feat) => feat.FeatName == KitsuneSpellFamiliarityFeatName));
+                sheet.AddSelectionOptionRightNow(new SingleFeatSelectionOption("emptySkySpellSelection", "Kitsune Spell Familiarity spell choice", 0, (Feat feat) => feat.HasTrait(SpellFamiliaritySubfeatTrait)));
             });
         yield return new HeritageSelectionFeat(
             ModManager.RegisterFeatName("Unusual Kitsune"),
