@@ -4,6 +4,7 @@ using Dawnsbury.Core;
 using Dawnsbury.Core.CharacterBuilder;
 using Dawnsbury.Core.CharacterBuilder.AbilityScores;
 using Dawnsbury.Core.CharacterBuilder.Feats;
+using Dawnsbury.Core.CharacterBuilder.FeatsDb.Common;
 using Dawnsbury.Core.CharacterBuilder.FeatsDb.Spellbook;
 using Dawnsbury.Core.CharacterBuilder.Selections.Options;
 using Dawnsbury.Core.CharacterBuilder.Spellcasting;
@@ -18,12 +19,11 @@ using Dawnsbury.Display.Illustrations;
 using Dawnsbury.Display.Text;
 using Dawnsbury.Modding;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using System.Diagnostics;
 
 namespace Dawnsbury.Mods.Ancestries.Kitsune;
 
-// TODO:
-// level 9 feat: Fox Trick - Once per encounter, you Create a Diversion or Hide as a free action.
 
 public static class KitsuneAncestryLoader
 {
@@ -41,7 +41,7 @@ public static class KitsuneAncestryLoader
     public static void LoadMod()
     {
 #if DEBUG
-        //Debugger.Launch();
+        Debugger.Launch();
 #endif
         ModManager.AssertV3();
 
@@ -199,6 +199,48 @@ public static class KitsuneAncestryLoader
             .WithOnSheet((sheet) =>
             {
                 sheet.SetProficiency(Trait.Spell, Proficiency.Trained);
+            });
+        yield return new TrueFeat(
+            ModManager.RegisterFeatName("Fox Trick"),
+            level: 9,
+            "You always have time for a joke or prank.",
+            "{b}Frequency{/b} Once per encounter\n\nYou Create a Diversion or Hide as a free action.",
+            [KitsuneTrait]).WithActionCost(0)
+            .WithOnCreature(cr =>
+            {
+                QEffect trickQEffect = new QEffect("Fox Trick {icon:FreeAction}", "Once per encounter, Create a Diversion or Hide as a free action.")
+                {
+                    ProvideActionIntoPossibilitySection = (self, section) =>
+                    {
+                        if (section.PossibilitySectionId == PossibilitySectionId.NonAttackManeuvers)
+                        {
+                            var cad = CommonCombatActions.CreateADiversion(self.Owner);
+                            cad.Illustration = new ScrollIllustration(IllustrationName.FreeAction, cad.Illustration);
+                            return new ActionPossibility(cad.WithActionCost(0)
+                                    .WithExtraTrait(KitsuneTrait)
+                                    .WithName("Fox Trick (Create a diversion)")
+                                    .WithEffectOnChosenTargets(Delegates.SmartCombineDelegates(cad.EffectOnChosenTargets, async (_, _, _) => { self.ExpiresAt = ExpirationCondition.Immediately; })
+                                    )
+                                );
+                        }
+                        else if (section.PossibilitySectionId == PossibilitySectionId.Stealth)
+                        {
+                            var hide = CommonCombatActions.CreateHide(self.Owner);
+                            hide.Illustration = new ScrollIllustration(IllustrationName.FreeAction, hide.Illustration);
+                            return new ActionPossibility(hide.WithActionCost(0)
+                                    .WithExtraTrait(KitsuneTrait)
+                                    .WithName("Fox Trick (Hide)")
+                                    .WithEffectOnChosenTargets(Delegates.SmartCombineDelegates(hide.EffectOnChosenTargets, async (_, _, _) => { self.ExpiresAt = ExpirationCondition.Immediately; })
+                                    )
+                                );
+                        }
+                        else
+                        {
+                            return null;
+                        }
+                    }
+                };
+                cr.AddQEffect(trickQEffect);
             });
     }
 
