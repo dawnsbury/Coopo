@@ -33,6 +33,10 @@ public static class KitsuneAncestryLoader
 
     static FeatName FrozenWindKitsuneFeatName = ModManager.RegisterFeatName("Frozen Wind Kitsune");
 
+    static FeatName FoxFireFeatName = ModManager.RegisterFeatName("Foxfire");
+
+    static FeatName FierceFoxfireFeatName = ModManager.RegisterFeatName("Fierce Foxfire");
+
     static FeatName KitsuneSpellFamiliarityFeatName = ModManager.RegisterFeatName("Kitsune Spell Familiarity");
 
     static Illustration BlueFlameArt = new ModdedIllustration("KitsuneAssets/blueflame.png");
@@ -81,16 +85,18 @@ public static class KitsuneAncestryLoader
                     $"Your foxfire deals {damageKind.ToString().ToLower()} damage.",
                     [KitsuneTrait], null).WithPermanentQEffect(null, (QEffect self) =>
                     {
-                        self.AdditionalUnarmedStrike = new Item(BlueFlameArt, "foxfire", [Trait.Unarmed, Trait.Ranged, Trait.Weapon, Trait.Magical])
+                        // increase damage dice and max range if character has fierce foxfire
+                        bool upgraded = self.Owner.HasFeat(FierceFoxfireFeatName);
+                        self.AdditionalUnarmedStrike = new Item(BlueFlameArt, "foxfire", [Trait.Unarmed, Trait.Ranged, Trait.Weapon, Trait.Magical, Trait.Sling])
                             .WithWeaponProperties(
-                                new WeaponProperties("1d4", damageKind)
+                                new WeaponProperties(upgraded ? "1d6" : "1d4", damageKind)
                                 {
                                     Sfx = sfx,
                                     VfxStyle = new VfxStyle(1, Core.Animations.ProjectileKind.Arrow, BlueFlameArt)
-                                }.WithMaximumRange(4).WithRangeIncrement(4));
+                                }.WithMaximumRange(upgraded ? 100 : 4).WithRangeIncrement(4));
                     });
         yield return new TrueFeat(
-            ModManager.RegisterFeatName("Foxfire"),
+            FoxFireFeatName,
             level: 1,
             "A crack of your tail sparks wisps of blue energy.",
             "Choose either electricity or fire when you gain this feat. You gain a foxfire ranged unarmed attack with a maximum range of 20 feet. The attack deals 1d4 damage of the chosen type. Your foxfire is in the sling weapon group and has the magical trait. Like other unarmed attacks, you can improve this attack with handwraps of mighty blows.\n\n{b}Special{/b} If you are a frozen wind kitsune, your foxfire deals cold damage instead of electricity or fire.",
@@ -185,6 +191,14 @@ public static class KitsuneAncestryLoader
                     cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, KitsuneTrait, Ability.Charisma, Trait.Divine).WithSpells([spellId], 1);
                 });
         }
+        yield return new TrueFeat(
+            FierceFoxfireFeatName,
+            level: 5,
+            "The flames from your tail burn brighter.",
+            "The damage of your foxfire increases from 1d4 to 1d6. It now has a range increment of 20ft instead of a max range of 20ft, meaning it can be fired beyond 20ft with a penalty.",
+            [KitsuneTrait, Trait.Homebrew]
+            ).WithPrerequisite(sheet => sheet.HasFeat(FoxFireFeatName), "You need Foxfire to take this feat.");
+
         yield return new TrueFeat(
             ModManager.RegisterFeatName("Kitsune Spell Mysteries"),
             level: 5,
