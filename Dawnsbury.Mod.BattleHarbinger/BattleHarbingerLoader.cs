@@ -19,6 +19,7 @@ using Dawnsbury.Core.Mechanics.Core;
 using Dawnsbury.Core.CharacterBuilder.FeatsDb;
 using Dawnsbury.Core.CharacterBuilder.FeatsDb.TrueFeatDb.Archetypes;
 using Dawnsbury.Display.Text;
+using Dawnsbury.Core.CharacterBuilder.FeatsDb.Spellbook;
 
 namespace Dawnsbury.Mods.BattleHarbinger;
 
@@ -32,7 +33,7 @@ public static class BattleHarbingerLoader
     {
         // enable the debugger in debug mode, and assert that the right version of the game's DLL is being built against
 #if DEBUG
-        //Debugger.Launch();
+        Debugger.Launch();
 #endif
         ModManager.AssertV3();
 
@@ -223,12 +224,15 @@ public static class BattleHarbingerLoader
     private static Feat BattleHarbingerDoctrine()
     {
         ModManager.RegisterInlineTooltip("bhdedicationdisclaimer", "{b}Difference from tabletop: {/b} This dedication feat grants you no benefits besides the ability to take Battle Harbinger feats. The benefits that the tabletop version provide are available as an optional new feat, Harbinger's Resiliency.");
+        var AoO = AllFeats.GetFeatByFeatName(FeatName.AttackOfOpportunity);
+        ModManager.RegisterInlineTooltip("bhaao", $"{{b}}{AoO.Name}{{/b}}\n{{i}}{AoO.FlavorText}{{/i}}\n{AoO.RulesText}");
         return new Feat(
             ModFeatName.BattleHarbingerDoctrine,
             "You've dedicated yourself to the battle creed, a specific doctrine that puts combat prowess first, even at the expense of a cleric's typical spellcasting and restorative abilities.",
             "This doctrine is a {i}class archetype{/i}: It modifies your Spellcasting and Divine Font class features, and you gain your doctrine benefits at different levels than normal. At 2nd level you gain {tooltip:bhdedicationdisclaimer}Battle Harbinger Dedication{/} as a bonus feat, which grants you access to the Battle Harbinger archetype's feats. \n" +
             "{b}Initial Creed (at level 1):{/b} You're trained in light and medium armor. You have expert proficiency in Fortitude saves. You're trained in martial weapons. If your deity's favored weapon is a simple weapon or an unarmed attack, you gain the Deadly Simplicity cleric feat.\n" +
-            "{b}Lesser Creed (at level 5):{/b} You gain expert proficiency with your deity's favored weapon, martial weapons, simple weapons, and unarmed attacks. When you critically succeed at an attack roll using your deity's favored weapon, you apply the weapon's {tooltip:criteffect}critical specialization effect{/tooltip}. Your proficiency rank for your class DC increases to expert.\n\n" +
+            "{b}Lesser Creed (at level 5):{/b} You gain expert proficiency with your deity's favored weapon, martial weapons, simple weapons, and unarmed attacks. When you critically succeed at an attack roll using your deity's favored weapon, you apply the weapon's {tooltip:criteffect}critical specialization effect{/tooltip}. Your proficiency rank for your class DC increases to expert.\n" +
+            "{b}Moderate Creed (at level 9):{/b} You gain {tooltip:bhaao}" + AoO.BaseName + "{/tooltip}.\n\n" +
             "In addition, the following class features are modified:\n" +
             "{b}Spellcasting:{/b} Your spellcasting capabilities are more restricted. At 1st level, you can prepare only one 1st-level spell and five cantrips, and at 3rd level, you gain only one 2nd-level spell slot; You gain one more spell slot at 2nd and 4th level as normal. From 5th level onwards, you always have two spell slots of your highest level and two more of your second highest level.\n" +
             "{b}Divine Font:{/b} Instead of preparing {i}heal{/i} or {i}harm{/i} spells with your divine font, you gain the battle font, which allows you to prepare {i}battle auras{i} - special versions of aura spells such as {i}bless{/i} and {i}bane{/i} that use your class DC instead of your spell DC. You gain access to the battle aura spells {i}battle bless{/i}, {i}battle bane{/i}, {i}battle benediction{/i} and {i}battle malediction{/i}, and you gain 4 additional spell slots each day at your highest level of cleric spell slots in which you can only prepare battle auras. Any feats or effects that refer to battle auras refer to these spells, regardless of whether they were cast from your divine font spell slots or your standard spell slots. At 5th level, the number of additional slots increases to 5.",
@@ -263,6 +267,11 @@ public static class BattleHarbingerLoader
                     }
                     sheet.SetProficiency(Trait.Cleric, Proficiency.Expert);
                 });
+                // Moderate Creed (level 9)
+                sheet.AddAtLevel(9, sheet =>
+                {
+                    sheet.GrantFeat(FeatName.AttackOfOpportunity);
+                });
                 // Spellcasting Modifications
                 sheet.AtEndOfRecalculation += (CalculatedCharacterSheetValues sheet) =>
                 {
@@ -287,6 +296,9 @@ public static class BattleHarbingerLoader
                 sheet.AllFeats.RemoveAll(feat => feat.HasTrait(Trait.DivineFont));
                 sheet.AtEndOfRecalculation += (CalculatedCharacterSheetValues sheet) =>
                 {
+                    // Remove all divine font slots (removing the feat doesn't actually work, cause of AtEndOfRecalculation shenanigans)
+                    sheet.PreparedSpells[Trait.Cleric].Slots.RemoveAll(slot => slot.Key.StartsWith("HealingFont"));
+                    sheet.PreparedSpells[Trait.Cleric].Slots.RemoveAll(slot => slot.Key.StartsWith("HarmfulFont"));
                     // make sure to use this instead of sheet.CurrentLevel, that can sometimes be inaccurate
                     int level = sheet.Sheet.MaximumLevel;
 

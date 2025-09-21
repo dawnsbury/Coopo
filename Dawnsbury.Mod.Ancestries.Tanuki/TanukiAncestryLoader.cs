@@ -31,9 +31,6 @@ namespace Dawnsbury.Mods.Ancestries.Tanuki;
 // * Homebrew some feats:
 //   * tanuki weapon familiarity; new tanuki weapon Umbrella, quarterstaff, halfling frying pan, saucepot (like the legend where a tanuki boils someone's wife into a stew)? or maybe more staffs?
 
-// non-tanuki TODO:
-// * dragonblood versatile heritage? could even use the dawnsbury dragon types, would be cool
-
 public static class TanukiAncestryLoader
 {
     static readonly Trait TanukiTrait = ModManager.RegisterTrait("Tanuki", new TraitProperties("Tanuki", true) { IsAncestryTrait = true });
@@ -114,7 +111,7 @@ public static class TanukiAncestryLoader
                             // (will not be necessary in an upcoming update)
                             if (damageStuff.Kind == DamageKind.Fire && you.HP > 0)
                             {
-                                you.Occupies.Overhead("kachi-kachi!!", Color.Red, you.ToString() + " resists dying through Scorched on the Crackling Mountain!");
+                                you.Overhead("kachi-kachi!!", Color.Red, you.ToString() + " resists dying through Scorched on the Crackling Mountain!");
                                 you.IncreaseWounded();
                                 you.PersistentUsedUpResources.UsedUpActions.Add("Crackling Mountain");
                                 qEffect.ExpiresAt = ExpirationCondition.Immediately;
@@ -427,7 +424,7 @@ public static class TanukiAncestryLoader
                     if (qe.Source == null)
                     {
                         Debugger.Log(1, null, "qe.Source was null in CourageousFleeing!");
-                        qe.Owner.Occupies.Overhead("qe.Source was null!", Color.Crimson, "qe.Source was null in CourageousFleeing!");
+                        qe.Owner.Overhead("qe.Source was null!", Color.Crimson, "qe.Source was null in CourageousFleeing!");
                         return;
                     }
                     QEffect tempFleeing = QEffect.Fleeing(qe.Source).WithExpirationAtEndOfOwnerTurn();

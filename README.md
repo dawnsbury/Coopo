@@ -24,6 +24,9 @@ Some mods for Dawnsbury Days that add things I think are cool, primarily Ancestr
 	* Retractable Claws Feat
 	* Kitsune Spell Familiarity Feat
 	* Star Orb Feat
+    * Kitsune Spell Mysteries Feat
+    * Fierce Foxfire Feat
+    * Fox Trick Feat
 * Tengu Mod
     * Dogtooth Tengu Heritage
     * Jinxed Tengu Heritage
@@ -53,7 +56,7 @@ Some mods for Dawnsbury Days that add things I think are cool, primarily Ancestr
         * Nodachi
         * Bastard Sword
 * Battle Harbinger class archetype
-    * All class features up to level 8
+    * All class features up to level 9
     * All battle aura spells - Bless, Bane, Benediction, and Malediction
     * Harbinger's Resiliency (Functionally identical to the Dedication in tabletop - see differences)
     * Aura Enhancement Feat

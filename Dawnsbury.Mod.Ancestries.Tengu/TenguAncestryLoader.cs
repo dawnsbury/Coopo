@@ -43,7 +43,7 @@ public static class TenguAncestryLoader
     {
         // enable the debugger in debug mode, and assert that the right version of the game's DLL is being built against
 #if DEBUG  
-        Debugger.Launch();
+        //Debugger.Launch();
 #endif
         ModManager.AssertV3();
 
@@ -422,7 +422,7 @@ public static class TenguAncestryLoader
                             (CheckResult result, string breakdown) = Checks.RollFlatCheck(17);
                             if (result == CheckResult.Success || result == CheckResult.CriticalSuccess)
                             {
-                                self.Owner.Occupies.Overhead("Jinx!", Color.DarkGreen, self.Owner.Name + " reduced an incoming doomed condition by 1 via Jinxed Tengu.", "Jinxed Tengu", "DC 17 flat check = " + breakdown);
+                                self.Owner.Overhead("Jinx!", Color.DarkGreen, self.Owner.Name + " reduced an incoming doomed condition by 1 via Jinxed Tengu.", "Jinxed Tengu", "DC 17 flat check = " + breakdown);
                                 applied.Value--;
                                 if (applied.Value == 0) return null;
                                 else return applied;

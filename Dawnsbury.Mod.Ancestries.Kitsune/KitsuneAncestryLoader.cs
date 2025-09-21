@@ -4,6 +4,7 @@ using Dawnsbury.Core;
 using Dawnsbury.Core.CharacterBuilder;
 using Dawnsbury.Core.CharacterBuilder.AbilityScores;
 using Dawnsbury.Core.CharacterBuilder.Feats;
+using Dawnsbury.Core.CharacterBuilder.FeatsDb.Common;
 using Dawnsbury.Core.CharacterBuilder.FeatsDb.Spellbook;
 using Dawnsbury.Core.CharacterBuilder.Selections.Options;
 using Dawnsbury.Core.CharacterBuilder.Spellcasting;
@@ -18,18 +19,23 @@ using Dawnsbury.Display.Illustrations;
 using Dawnsbury.Display.Text;
 using Dawnsbury.Modding;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using System.Diagnostics;
 
 namespace Dawnsbury.Mods.Ancestries.Kitsune;
 
-// TODO:
-// level 9 feat: Fox Trick - Once per encounter, you Create a Diversion or Hide as a free action.
 
 public static class KitsuneAncestryLoader
 {
     static readonly public Trait KitsuneTrait = ModManager.RegisterTrait("Kitsune", new TraitProperties("Kitsune", true) { IsAncestryTrait = true });
 
+    static Trait SpellFamiliaritySubfeatTrait = ModManager.RegisterTrait("spellFamiliaritySubfeat", new TraitProperties("", false));
+
     static FeatName FrozenWindKitsuneFeatName = ModManager.RegisterFeatName("Frozen Wind Kitsune");
+
+    static FeatName FoxFireFeatName = ModManager.RegisterFeatName("Foxfire");
+
+    static FeatName FierceFoxfireFeatName = ModManager.RegisterFeatName("Fierce Foxfire");
 
     static FeatName KitsuneSpellFamiliarityFeatName = ModManager.RegisterFeatName("Kitsune Spell Familiarity");
 
@@ -39,7 +45,7 @@ public static class KitsuneAncestryLoader
     public static void LoadMod()
     {
 #if DEBUG
-        //Debugger.Launch();
+        Debugger.Launch();
 #endif
         ModManager.AssertV3();
 
@@ -79,16 +85,18 @@ public static class KitsuneAncestryLoader
                     $"Your foxfire deals {damageKind.ToString().ToLower()} damage.",
                     [KitsuneTrait], null).WithPermanentQEffect(null, (QEffect self) =>
                     {
-                        self.AdditionalUnarmedStrike = new Item(BlueFlameArt, "foxfire", [Trait.Unarmed, Trait.Ranged, Trait.Weapon, Trait.Magical])
+                        // increase damage dice and max range if character has fierce foxfire
+                        bool upgraded = self.Owner.HasFeat(FierceFoxfireFeatName);
+                        self.AdditionalUnarmedStrike = new Item(BlueFlameArt, "foxfire", [Trait.Unarmed, Trait.Ranged, Trait.Weapon, Trait.Magical, Trait.Sling])
                             .WithWeaponProperties(
-                                new WeaponProperties("1d4", damageKind)
+                                new WeaponProperties(upgraded ? "1d6" : "1d4", damageKind)
                                 {
                                     Sfx = sfx,
                                     VfxStyle = new VfxStyle(1, Core.Animations.ProjectileKind.Arrow, BlueFlameArt)
-                                }.WithMaximumRange(4).WithRangeIncrement(4));
+                                }.WithMaximumRange(upgraded ? 100 : 4).WithRangeIncrement(4));
                     });
         yield return new TrueFeat(
-            ModManager.RegisterFeatName("Foxfire"),
+            FoxFireFeatName,
             level: 1,
             "A crack of your tail sparks wisps of blue energy.",
             "Choose either electricity or fire when you gain this feat. You gain a foxfire ranged unarmed attack with a maximum range of 20 feet. The attack deals 1d4 damage of the chosen type. Your foxfire is in the sling weapon group and has the magical trait. Like other unarmed attacks, you can improve this attack with handwraps of mighty blows.\n\n{b}Special{/b} If you are a frozen wind kitsune, your foxfire deals cold damage instead of electricity or fire.",
@@ -119,7 +127,7 @@ public static class KitsuneAncestryLoader
                 ModManager.RegisterFeatName(featName, spell.Name),
                 null,
                 $"You can cast {AllSpells.CreateSpellLink(spellId, KitsuneTrait)} as a divine innate spell at will. Your spellcasting ability for this cantrip is Charisma.",
-                [KitsuneTrait],
+                [KitsuneTrait, SpellFamiliaritySubfeatTrait],
                 null).WithIllustration(spell.Illustration).WithRulesBlockForSpell(spellId).WithOnCreature(delegate (Creature cr)
                 {
                     cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, KitsuneTrait, Ability.Charisma, Trait.Divine).WithSpells([spellId], cr.MaximumSpellRank);
@@ -135,7 +143,8 @@ public static class KitsuneAncestryLoader
                 SpellFamiliaritySubfeat("KitsuneSpellFamiliarityDaze", SpellId.Daze),
                 SpellFamiliaritySubfeat("KitsuneSpellFamiliarityForbiddingWard", SpellId.ForbiddingWard)
                 ]
-            ).WithOnSheet((sheet) =>
+            ).WithPrerequisite(sheet => sheet.Heritage?.Name != "Empty Sky Kitsune", "You already have this feat from your heritage.")
+            .WithOnSheet((sheet) =>
             {
                 sheet.SetProficiency(Trait.Spell, Proficiency.Trained);
             });
@@ -167,6 +176,85 @@ public static class KitsuneAncestryLoader
                         };
                     }
                 });
+            });
+        
+        Feat SpellMysteriesSubfeat(string featName, SpellId spellId)
+        {
+            Spell spell = AllSpells.CreateModernSpellTemplate(spellId, KitsuneTrait);
+            return new Feat(
+                ModManager.RegisterFeatName(featName, spell.Name),
+                null,
+                $"You can cast {AllSpells.CreateSpellLink(spellId, KitsuneTrait)} as a divine innate spell at will. Your spellcasting ability for this spell is Charisma.",
+                [KitsuneTrait],
+                null).WithIllustration(spell.Illustration).WithRulesBlockForSpell(spellId).WithOnCreature(delegate (Creature cr)
+                {
+                    cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, KitsuneTrait, Ability.Charisma, Trait.Divine).WithSpells([spellId], 1);
+                });
+        }
+        yield return new TrueFeat(
+            FierceFoxfireFeatName,
+            level: 5,
+            "The flames from your tail burn brighter.",
+            "The damage of your foxfire increases from 1d4 to 1d6. It now has a range increment of 20ft instead of a max range of 20ft, meaning it can be fired beyond 20ft with a penalty.",
+            [KitsuneTrait, Trait.Homebrew]
+            ).WithPrerequisite(sheet => sheet.HasFeat(FoxFireFeatName), "You need Foxfire to take this feat.");
+
+        yield return new TrueFeat(
+            ModManager.RegisterFeatName("Kitsune Spell Mysteries"),
+            level: 5,
+            "You know more kitsune magic.",
+            $"{{b}}Prerequisites{{/b}} You have at least one innate kitsune spell\n\nChoose {AllSpells.CreateSpellLink(SpellId.Bane, KitsuneTrait)} or {AllSpells.CreateSpellLink(SpellId.Sanctuary, KitsuneTrait)}. You can cast this spell as a 1st-level divine innate spell once per day. Your spellcasting ability for this spell is Charisma.",
+            [KitsuneTrait],
+            [
+                SpellMysteriesSubfeat("KitsuneSpellMysteriesBane", SpellId.Bane),
+                SpellMysteriesSubfeat("KitsuneSpellMysteriesSanctuary", SpellId.Sanctuary)
+                ])
+            .WithPrerequisite(sheet => sheet.HasFeat(KitsuneSpellFamiliarityFeatName) || sheet.Heritage?.Name == "Empty Sky Kitsune", "You must have at least one innate kitsune spell.")
+            .WithOnSheet((sheet) =>
+            {
+                sheet.SetProficiency(Trait.Spell, Proficiency.Trained);
+            });
+        yield return new TrueFeat(
+            ModManager.RegisterFeatName("Fox Trick"),
+            level: 9,
+            "You always have time for a joke or prank.",
+            "{b}Frequency{/b} Once per encounter\n\nYou Create a Diversion or Hide as a free action.",
+            [KitsuneTrait]).WithActionCost(0)
+            .WithOnCreature(cr =>
+            {
+                QEffect trickQEffect = new QEffect("Fox Trick {icon:FreeAction}", "Once per encounter, Create a Diversion or Hide as a free action.")
+                {
+                    ProvideActionIntoPossibilitySection = (self, section) =>
+                    {
+                        if (section.PossibilitySectionId == PossibilitySectionId.NonAttackManeuvers)
+                        {
+                            var cad = CommonCombatActions.CreateADiversion(self.Owner);
+                            cad.Illustration = new ScrollIllustration(IllustrationName.FreeAction, cad.Illustration);
+                            return new ActionPossibility(cad.WithActionCost(0)
+                                    .WithExtraTrait(KitsuneTrait)
+                                    .WithName("Fox Trick (Create a diversion)")
+                                    .WithEffectOnChosenTargets(Delegates.SmartCombineDelegates(cad.EffectOnChosenTargets, async (_, _, _) => { self.ExpiresAt = ExpirationCondition.Immediately; })
+                                    )
+                                );
+                        }
+                        else if (section.PossibilitySectionId == PossibilitySectionId.Stealth)
+                        {
+                            var hide = CommonCombatActions.CreateHide(self.Owner);
+                            hide.Illustration = new ScrollIllustration(IllustrationName.FreeAction, hide.Illustration);
+                            return new ActionPossibility(hide.WithActionCost(0)
+                                    .WithExtraTrait(KitsuneTrait)
+                                    .WithName("Fox Trick (Hide)")
+                                    .WithEffectOnChosenTargets(Delegates.SmartCombineDelegates(hide.EffectOnChosenTargets, async (_, _, _) => { self.ExpiresAt = ExpirationCondition.Immediately; })
+                                    )
+                                );
+                        }
+                        else
+                        {
+                            return null;
+                        }
+                    }
+                };
+                cr.AddQEffect(trickQEffect);
             });
     }
 
@@ -209,7 +297,7 @@ public static class KitsuneAncestryLoader
                         if (!action.SavingThrow.Defense.IsSavingThrow()) return;
                         bool takeReaction = await you.AskToUseReaction("You are about to make a saving throw against a divine effect.\nDo you want to use {b}Invoke Celestial Privilege{/b} to gain a +1 circumstance bonus on all such saves until the start of your next turn?");
                         if (!takeReaction) return;
-                        you.Occupies.Overhead("Celestial Privilege", Color.Gold, $"{you.Name} invokes their Celestial Privilege against {action.Name}, gaining a +1 bonus against divine effects.");
+                        you.Overhead("Celestial Privilege", Color.Gold, $"{you.Name} invokes their Celestial Privilege against {action.Name}, gaining a +1 bonus against divine effects.");
                         cr.AddQEffect(new QEffect("Celestial Privilege", "You have a +1 circumstance bonus to saving throws against divine effects until the start of your next turn.")
                         {
                             BonusToDefenses = (QEffect self, CombatAction? action, Defense defense) => action?.HasTrait(Trait.Divine) == true ? new Bonus(1, BonusType.Circumstance, "Celestial Privilege") : null,
@@ -248,10 +336,10 @@ public static class KitsuneAncestryLoader
         yield return new HeritageSelectionFeat(
             ModManager.RegisterFeatName("Empty Sky Kitsune"),
             "Your spirit is open to the secrets of beyond, granting you greater access to kitsune magic.",
-            "You gain the {b}Kitsune Spell Familiarity{/b} ancestry feat."
+            $"You gain the {{b}}Kitsune Spell Familiarity{{/b}} ancestry feat (gain {AllSpells.CreateSpellLink(SpellId.Daze, KitsuneTrait)} or {AllSpells.CreateSpellLink(SpellId.ForbiddingWard, KitsuneTrait)} as an innate cantrip)."
             ).WithOnSheet((CalculatedCharacterSheetValues sheet) =>
             {
-                sheet.AddSelectionOptionRightNow(new SingleFeatSelectionOption("emptySkySpellSelection", "Heritage Spell Choice", 0, (Feat feat) => feat.FeatName == KitsuneSpellFamiliarityFeatName));
+                sheet.AddSelectionOptionRightNow(new SingleFeatSelectionOption("emptySkySpellSelection", "Kitsune Spell Familiarity spell choice", 0, (Feat feat) => feat.HasTrait(SpellFamiliaritySubfeatTrait)));
             });
         yield return new HeritageSelectionFeat(
             ModManager.RegisterFeatName("Unusual Kitsune"),
