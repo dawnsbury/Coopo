@@ -44,11 +44,11 @@
 
 	<Target Name="CopyToPublishFolder" AfterTargets="Build" Condition=" '$(Configuration)'=='Release' ">
 		<Copy SourceFiles="$(TargetPath)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Dawnsbury Days\Steam Workshop Uploader\Tengu Mod\CustomModsV3" />
-
 		<ItemGroup>
 			<AssetFiles Include="$(ProjectDir)TenguAssets\*.*" />
 		</ItemGroup>
 		<Copy SourceFiles="@(AssetFiles)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Dawnsbury Days\Steam Workshop Uploader\Tengu Mod\CustomModsV3\TenguAssets" />
+		<Copy SourceFiles="$(ProjectDir)optional-dependencies.txt" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Dawnsbury Days\Steam Workshop Uploader\Tengu Mod"/>
 
 		<Message text="Copied to mod publishing folder." />
 	</Target>
