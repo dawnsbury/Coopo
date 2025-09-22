@@ -24,6 +24,7 @@ using Dawnsbury.Core.Mechanics.Rules;
 using Dawnsbury.Core.CharacterBuilder.FeatsDb.Common;
 using System.Diagnostics;
 using Dawnsbury.Display;
+using Dawnsbury.Core.Mechanics.Targeting.TargetingRequirements;
 
 namespace Dawnsbury.Mods.Ancestries.Tengu;
 
@@ -84,6 +85,7 @@ public static class TenguAncestryLoader
                 self.ProvideStrikeModifier = (Item weapon) =>
                 {
                     if (!self.Owner.HasOneWeaponAndFist) return null;
+                    if (weapon == null || weapon.WeaponProperties == null) return null;
                     if (!weapon.HasTrait(Trait.Melee)) return null;
                     if (weapon.HasTrait(Trait.Unarmed)) return null;
                     // for whatever reason, OverrideItemDamageDie is only checked when the Strike action is created, not when it's used. therefore, we add it to the feat's effect just so that the strike can grab it, then remove it.
@@ -109,7 +111,10 @@ public static class TenguAncestryLoader
                     combatAction.Illustration = new SideBySideIllustration(combatAction.Illustration, Items.ChangeGripArt);
                     combatAction.ActionCost = 1;
                     combatAction.Traits.AddRange([Trait.Fighter, Trait.Flourish, Trait.Basic]);
-                    combatAction.Description = StrikeRules.CreateBasicStrikeDescription2(combatAction.StrikeModifiers, weaponDieIncreased: true, additionalAftertext: "You resume gripping the weapon with only one hand. This doesn't end any stance or effect that requires you to have one hand free.", additionalAttackRollText: "You quickly switch your grip during the Strike in order to make the attack with two hands.");
+                    string addedDamageText = Items.WeaponHasTwoHand(weapon) ?
+                        $"which grants the benefit of the Two-Hand trait as well as a +{weapon.WeaponProperties.DamageDieCount} circumstance bonus to damage for this attack." :
+                        "which increases the weapon's damage dice by one step for this attack.";
+                    combatAction.Description = StrikeRules.CreateBasicStrikeDescription2(combatAction.StrikeModifiers, weaponDieIncreased: true, additionalAftertext: "You resume gripping the weapon with only one hand. This doesn't end any stance or effect that requires you to have one hand free.", additionalAttackRollText: "You quickly switch your grip during the Strike in order to make the attack with two hands, " + addedDamageText);
 
                     return combatAction;
                 };

@@ -17,6 +17,7 @@ using Dawnsbury.Display.Text;
 using Dawnsbury.Modding;
 using Microsoft.Xna.Framework;
 using System;
+using System.Diagnostics;
 
 namespace Dawnsbury.Mods.Ancestries.Tengu
 {
@@ -144,23 +145,10 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
                 new ActionPossibility(self.TwoHanded ? SwapToOneHand(holder, self, baseDamageDiceSize) : SwapToTwoHands(holder, self, upgradedDamageDiceSize));
             item.StateCheckWhenWielded = (Creature wielder, Item item) =>
             {
-                //wielder.PersistentCharacterSheet.Calculated.AddSelectionOption(new SingleFeatSelectionOption("twoHandBeingHeldTwoHandedInitially", "THIS IS THE NAME", 0, (feat => feat.HasTrait(Trait.MonkPathToPerfection))));
-                wielder.AddQEffect(new QEffect()
+                if (wielder.FindQEffect(TwoHandStateCheckQEffectId) == null)
                 {
-                    StartOfCombat = async (QEffect self) =>
-                    {
-                        if (self.Owner.HasFreeHand &&
-                            await self.Owner.AskForConfirmation(item.Illustration, $"How is {self.Owner.Name} holding their {item.Name} at the start of combat?", "Two-handed", "One-handed"))
-                        {
-                            if (item.WeaponProperties == null) return;
-                            item.WeaponProperties.DamageDieSize = upgradedDamageDiceSize;
-                            item.Traits.Add(Trait.TwoHanded);
-                        }
-                        // remove statecheck entirely afterwards, since it's only required at the very start of battle
-                        item.StateCheckWhenWielded = null;
-                    }
-                }.WithExpirationEphemeral());
-                
+                    wielder.AddQEffect(TwoHandStateCheck(item, baseDamageDiceSize, upgradedDamageDiceSize));
+                }
             };
             return item;
         }
@@ -168,19 +156,21 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
         // Produce a CombatAction for the given Item, which changes the item to its two-handed form.
         private static CombatAction SwapToTwoHands(Creature owner, Item item, int diceSize)
         {
-            bool lastActionWasToDraw = owner.Actions.ActionHistoryThisTurn.Count != 0 && owner.Actions.ActionHistoryThisTurn.Last().Name == $"Draw {item.Name}";
+            var lastAction = owner.Actions.ActionHistoryThisTurn.LastOrDefault();
+             bool lastActionWasToGrip = lastAction?.Item == item && (lastAction?.ActionId == ActionId.DrawItem || lastAction?.ActionId == ActionId.PickUpItem || lastAction?.ActionId == ActionId.ReplaceItemInHand);
+
             return new CombatAction(owner, ChangeGripArt, $"Change Grip ({item.Name})", [Trait.Interact, Trait.Manipulate],
-                "You Interact to put another hand on the weapon, increasing its weapon damage die to the value indicated in the Two-Hand trait. You must have a free hand.\n\n{b}Special{/b} If your last action was to draw the weapon, you can Change Grip to wield it two-handed as a free action.",
+                "You Interact to put another hand on the weapon, increasing its weapon damage die to the value indicated in the Two-Hand trait. You must have a free hand.\n\n{b}Special{/b} If your last action was to draw or pick up the weapon, you can Change Grip to wield it two-handed as a free action.",
                 Target.Self().WithAdditionalRestriction((Creature self) =>
                 {
                     if (!self.HasFreeHand) return "You must have a free hand.";
                     else return null;
                 })).WithEffectOnSelf((Creature self) =>
                 {
-                    if (item.WeaponProperties == null) return;
-                    item.WeaponProperties.DamageDieSize = diceSize;
-                    item.Traits.Add(Trait.TwoHanded);
-                }).WithActionCost(lastActionWasToDraw ? 0 : 1).WithShortDescription("Wield your weapon two-handed to deal more damage.");
+                    QEffect? weaponState = self.FindQEffect(TwoHandStateCheckQEffectId);
+                    if (weaponState == null) return;
+                    weaponState.Tag = true;
+                }).WithActionCost(lastActionWasToGrip ? 0 : 1).WithShortDescription("Wield your weapon two-handed to deal more damage.");
         }
 
         // Produce a CombatAction for the given Item, which changes the item to its one-handed form.
@@ -190,11 +180,58 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
                 "You Release a hand from the weapon, decreasing its weapon damage die to its usual value.",
                 Target.Self()).WithEffectOnSelf((Creature self) =>
                 {
-                    if (item.WeaponProperties == null) return;
-                    item.WeaponProperties.DamageDieSize = diceSize;
-                    item.Traits.Remove(Trait.TwoHanded);
+                    QEffect? weaponState = self.FindQEffect(TwoHandStateCheckQEffectId);
+                    if (weaponState == null) return;
+                    weaponState.Tag = false;
                 }).WithActionCost(0).WithShortDescription("Wield your weapon one-handed, at the expense of reduced damage.");
         }
+
+        private static QEffectId TwoHandStateCheckQEffectId = ModManager.RegisterEnumMember<QEffectId>("TwoHandStateCheckQEffectId");
+
+        private static QEffect TwoHandStateCheck(Item item, int baseDamageDiceSize, int upgradedDamageDiceSize)
+        {
+            return new QEffect()
+            {
+                Id = TwoHandStateCheckQEffectId,
+                Tag = false, // true for two-handing, false for one-handing
+                StateCheck = (QEffect self) =>
+                {
+                    // TODO: maybe make the player choose how many hands they grab the weapon with as soon as they recieve this effect? for example, if they get passed it and want to hold it in 2 hands, and to smooth out the need to Change Grip when picking it up
+                    if (item.WeaponProperties == null) return;
+                    // item has left the owner's possession; make it one handed and then remove this tracking effect
+                    if (!self.Owner.HeldItems.Contains(item))
+                    {
+                        item.WeaponProperties.DamageDieSize = baseDamageDiceSize;
+                        item.Traits.Remove(Trait.TwoHanded);
+                        self.ExpiresAt = ExpirationCondition.Immediately;
+                    } else
+                    {
+                        if (self.Tag is not bool) return;
+                        // weapon is being held in two hands and hasn't been adjusted yet; add TwoHanded and increase damage
+                        if ((bool)self.Tag == true && !item.Traits.Contains(Trait.TwoHanded))
+                        {
+                            item.WeaponProperties.DamageDieSize = upgradedDamageDiceSize;
+                            item.Traits.Add(Trait.TwoHanded);
+                        }
+                        // weapon is being held in one hand and hasn't been adjusted yet; remove TwoHanded and reset damage
+                        else if ((bool)self.Tag == false && item.Traits.Contains(Trait.TwoHanded))
+                        {
+                            item.WeaponProperties.DamageDieSize = baseDamageDiceSize;
+                            item.Traits.Remove(Trait.TwoHanded);
+                        }
+                    }
+                },
+                StartOfCombat = async (QEffect self) =>
+                {
+                    if (self.Owner.HasFreeHand &&
+                        await self.Owner.AskForConfirmation(item.Illustration, $"How is {self.Owner.Name} holding their {item.Name} at the start of combat?", "Two-handed", "One-handed"))
+                    {
+                        self.Tag = true;
+                    }
+                }
+            };
+        }
+
         private static Item ImplementBrace(this Item item)
         {
             // don't do anything if another mod is already handling the brace implementation
