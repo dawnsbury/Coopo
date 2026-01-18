@@ -1,6 +1,8 @@
 ﻿using Dawnsbury.Core;
 using Dawnsbury.Core.CharacterBuilder.FeatsDb.Common;
+using Dawnsbury.Core.CharacterBuilder.FeatsDb.Spellbook;
 using Dawnsbury.Core.CharacterBuilder.Selections.Options;
+using Dawnsbury.Core.CharacterBuilder.Spellcasting;
 using Dawnsbury.Core.CombatActions;
 using Dawnsbury.Core.Coroutines.Options;
 using Dawnsbury.Core.Creatures;
@@ -18,6 +20,7 @@ using Dawnsbury.Modding;
 using Microsoft.Xna.Framework;
 using System;
 using System.Diagnostics;
+using System.Xml.Linq;
 
 namespace Dawnsbury.Mods.Ancestries.Tengu
 {
@@ -33,16 +36,14 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
         static public readonly Trait Wakizashi = ModManager.RegisterTrait("Wakizashi", new TraitProperties("Wakizashi", false));
         static public readonly Trait TenguGaleBlade = ModManager.RegisterTrait("TenguGaleBlade", new TraitProperties("Tengu Gale Blade", false));
         static public readonly Trait Nodachi = ModManager.RegisterTrait("Nodachi", new TraitProperties("Nodachi", false));
-        static public readonly Trait BastardSword = ModManager.RegisterTrait("BastardSword", new TraitProperties("Bastard Sword", false));
+        //static public readonly Trait BastardSword = ModManager.RegisterTrait("BastardSword", new TraitProperties("Bastard Sword", false));
+        //static public readonly Trait TenguFeatherFan = ModManager.RegisterTrait("TenguFeatherFan", new TraitProperties("Tengu Feather Fan", false));
 
         static public readonly Illustration ChangeGripArt = new ModdedIllustration("TenguAssets/changeGrip.png");
 
         public static void RegisterItems()
         {
             // check if a brace trait already exists (e.g. from More Basic Actions); if it does, then use that, otherwise use our own
-            // TODO: optional-dependencies.txt isnt working, figure that out
-            // C:\Program Files (x86)\Steam\steamapps\workshop\content\2693730\3398206093
-            //if (TenguAncestryLoader.IsAssemblyExists("MoreBasicActions") && ModManager.TryParse<Trait>("Brace", out Brace))
             if (ModManager.TryParse<Trait>("Brace", out Brace))
             {
                 externalBraceUsed = true;
@@ -56,17 +57,17 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
 
             ModManager.RegisterNewItemIntoTheShop("katana", (ItemName name) =>
             {
-                return new Item(name, new ModdedIllustration("TenguAssets/katana.png"), "katana", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.DeadlyD8, TwoHandD10, Trait.VersatileP, Trait.Mod])
+                return new Item(name, new ModdedIllustration("TenguAssets/katana.png"), "katana", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.DeadlyD8, Trait.TwoHand1d10, Trait.VersatileP, Trait.Mod])
                 {
                     WeaponProperties = new WeaponProperties("1d6", DamageKind.Slashing)
-                }.WithMainTrait(Katana).ImplementTwoHand(6, 10);
+                }.WithMainTrait(Katana);
             });
             ModManager.RegisterNewItemIntoTheShop("khakkara", (ItemName name) =>
             {
-                return new Item(name, new ModdedIllustration("TenguAssets/khakkara.png"), "khakkara", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Club, Trait.MonkWeapon, TwoHandD10, Trait.VersatileP, Trait.Mod])
+                return new Item(name, new ModdedIllustration("TenguAssets/khakkara.png"), "khakkara", 0, 2, [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Club, Trait.MonkWeapon, Trait.TwoHand1d10, Trait.VersatileP, Trait.Mod])
                 {
                     WeaponProperties = new WeaponProperties("1d6", DamageKind.Bludgeoning)
-                }.WithMainTrait(Khakkara).ImplementTwoHand(6, 10);
+                }.WithMainTrait(Khakkara);
             });
             ModManager.RegisterNewItemIntoTheShop("temple sword", (ItemName name) =>
             {
@@ -97,140 +98,94 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
                     WeaponProperties = new WeaponProperties("1d8", DamageKind.Slashing)
                 }.WithMainTrait(Nodachi).ImplementBrace();
             });
-            ModManager.RegisterNewItemIntoTheShop("bastard sword", (ItemName name) =>
-            {
-                return new Item(name, new ModdedIllustration("TenguAssets/bastardSword.png"), "bastard sword", level: 0, price: 4,
-                    [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, TwoHandD12, Trait.Mod])
-                {
-                    WeaponProperties = new WeaponProperties("1d8", DamageKind.Slashing)
-                }.WithMainTrait(BastardSword).ImplementTwoHand(8, 12);
+            //ModManager.RegisterNewItemIntoTheShop("bastard sword", (ItemName name) =>
+            //{
+            //    return new Item(name, new ModdedIllustration("TenguAssets/bastardSword.png"), "bastard sword", level: 0, price: 4,
+            //        [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, TwoHandD12, Trait.Mod])
+            //    {
+            //        WeaponProperties = new WeaponProperties("1d8", DamageKind.Slashing)
+            //    }.WithMainTrait(BastardSword).ImplementTwoHand(8, 12);
+            //});
+            //ModManager.RegisterNewItemIntoTheShop("tengu feather fan", (ItemName name) =>
+            //{
+            //    Illustration fanArt = new ModdedIllustration("TenguAssets/tenguFeatherFan.png");
+            //    return new Item(name, fanArt, "tengu feather fan", level: 0, price: 0, [TenguAncestryLoader.TenguTrait, Trait.Mod, Trait.Primal])
+            //    {
+            //        MainTrait = TenguFeatherFan,
+            //        Description = "You must be a Tengu with the Tengu Feather Fan feat to use this item.\n\nWhile holding a tengu feather fan, the save DC of your tengu spells is the highest of your spell DC and your class DC, and your tengu spells use your highest spellcasting ability modifier instead of Charisma.",
+            //        StateCheckWhenWielded = (Creature wielder, Item fan) =>
+            //        {
+            //            // ****************************************************************************************** //
+            //            // TODO:
+            //            // next, add the limited usages (probably using the same type of stuff as other once-per-day limits)
+            //            // and then check you have the right feats to cast the spells. or move this into those feats and just check if a feather fan is equipped.
+            //            // and then hide this qeffect.
+            //            // TODO CONCLUDED
+            //            // ****************************************************************************************** //
+            //            wielder.AddQEffect(new QEffect("tengu feather fan being wielded", "effect applied by statecheckwhenwielded")
+            //            {
+            //                Illustration = fanArt,
+            //                ExpiresAt = ExpirationCondition.Ephemeral,
+            //                ProvideActionsIntoPossibilitySection = (QEffect self, PossibilitySection section) =>
+            //                {
+            //                    if (section.PossibilitySectionId != PossibilitySectionId.ItemActions) return [];
+
+            //                    CombatAction pushingGust = AllSpells.CreateSpellInCombat(SpellId.PushingGust, self.Owner, 1, TenguAncestryLoader.TenguTrait);
+            //                    if (pushingGust.SavingThrow != null)
+            //                        pushingGust.WithSavingThrow(new SavingThrow(pushingGust.SavingThrow.Defense, wielder.ClassOrSpellDC()));
+            //                    pushingGust.CastFromScroll = fan;
+            //                    pushingGust.Illustration = new SideBySideIllustration(fanArt, pushingGust.Illustration);
+            //                    //pushingGust.Name = "Tengu feather fan {i}(" + pushingGust.Name + "){/i}";
+            //                    pushingGust.Name = pushingGust.Name + " {i}(tengu feather fan){/i}";
+            //                    Possibility spellPossibility1 = Possibilities.CreateSpellPossibility(pushingGust);
+            //                    spellPossibility1.PossibilitySize = PossibilitySize.Half;
+            //                    spellPossibility1.PossibilityGroup = "Use worn item";
+
+            //                    CombatAction wallOfFire = AllSpells.CreateSpellInCombat(SpellId.WallOfFire, self.Owner, 4, TenguAncestryLoader.TenguTrait);
+            //                    if (wallOfFire.SavingThrow != null)
+            //                        wallOfFire.WithSavingThrow(new SavingThrow(wallOfFire.SavingThrow.Defense, wielder.ClassOrSpellDC()));
+            //                    wallOfFire.CastFromScroll = fan;
+            //                    wallOfFire.Illustration = new SideBySideIllustration(fanArt, wallOfFire.Illustration);
+            //                    //wallOfFire.Name = "Tengu feather fan {i}(" + wallOfFire.Name + "){/i}";
+            //                    wallOfFire.Name = wallOfFire.Name + " {i}(tengu feather fan){/i}";
+            //                    Possibility spellPossibility2 = Possibilities.CreateSpellPossibility(wallOfFire);
+            //                    spellPossibility2.PossibilitySize = PossibilitySize.Half;
+            //                    spellPossibility2.PossibilityGroup = "Use worn item";
+
+            //                    return [spellPossibility1, spellPossibility2];
+            //                }
+            //            });
+            //        }
+            //    };
+                
+                
+                //.WithMainTrait(TenguFeatherFan)
+                //    .WithDescription("You must be a Tengu with the Tengu Feather Fan feat to use this item.\n\nWhile holding a tengu feather fan, the save DC of your tengu spells is the highest of your spell DC and your class DC, and your tengu spells use your highest spellcasting ability modifier instead of Charisma.")
+                    
+                    
+                    //.WithPermanentQEffectWhenWorn((QEffect self, Item fan) =>
+                    //{
+                    //    CombatAction pushingGust = AllSpells.CreateSpellInCombat(SpellId.PushingGust, self.Owner, 1, TenguAncestryLoader.TenguTrait);
+                    //    pushingGust.CastFromScroll = fan;
+                    //    pushingGust.Illustration = new SideBySideIllustration(fanArt, pushingGust.Illustration);
+                    //    pushingGust.Name = "Tengu feather fan {i}(" + pushingGust.Name + "){/i}";
+                    //    Possibility spellPossibility1 = Dawnsbury.Core.Possibilities.Possibilities.CreateSpellPossibility(pushingGust);
+                    //    spellPossibility1.PossibilitySize = PossibilitySize.Half;
+                    //    spellPossibility1.PossibilityGroup = "Use worn item";
+
+                    //    CombatAction wallOfFire = AllSpells.CreateSpellInCombat(SpellId.WallOfFire, self.Owner, 4, TenguAncestryLoader.TenguTrait);
+                    //    wallOfFire.CastFromScroll = fan;
+                    //    wallOfFire.Illustration = new SideBySideIllustration(fanArt, wallOfFire.Illustration);
+                    //    wallOfFire.Name = "Tengu feather fan {i}(" + wallOfFire.Name + "){/i}";
+                    //    Possibility spellPossibility2 = Dawnsbury.Core.Possibilities.Possibilities.CreateSpellPossibility(wallOfFire);
+                    //    spellPossibility2.PossibilitySize = PossibilitySize.Half;
+                    //    spellPossibility2.PossibilityGroup = "Use worn item";
+
+                    //    self.ProvideActionsIntoPossibilitySection = (QEffect self, PossibilitySection section) => section.PossibilitySectionId == PossibilitySectionId.ItemActions ? [spellPossibility1, spellPossibility2] : [];
+                    //});
             });
         }
 
-        public static Trait TwoHandD10 = ModManager.RegisterTrait("Two-Hand 1d10",
-            new TraitProperties("Two-Hand 1d10", true,
-                "This weapon can be wielded with two hands to change its weapon damage die to the indicated value. This change applies to all the weapon's damage dice."));
-        public static Trait TwoHandD12 = ModManager.RegisterTrait("Two-Hand 1d12",
-            new TraitProperties("Two-Hand 1d12", true,
-                "This weapon can be wielded with two hands to change its weapon damage die to the indicated value. This change applies to all the weapon's damage dice."));
-
-        public static bool WeaponHasTwoHand(Item weapon, out Dice d)
-        {
-            if (weapon.HasTrait(TwoHandD10))
-            {
-                d = Dice.D10;
-                return true;
-            }
-            if (weapon.HasTrait(TwoHandD12))
-            {
-                d = Dice.D12;
-                return true;
-            }
-            else
-            {
-                d = Dice.D1;
-                return false;
-            }
-        }
-
-        public static bool WeaponHasTwoHand(Item weapon)
-        {
-            return WeaponHasTwoHand(weapon, out _);
-        }
-
-        // extension method that implements the functionality of Two-Hand on a weapon. Doesn't add the trait - do that yourself.
-        private static Item ImplementTwoHand(this Item item, int baseDamageDiceSize, int upgradedDamageDiceSize)
-        {
-            item.ProvidesItemAction = (Creature holder, Item self) =>
-                new ActionPossibility(self.TwoHanded ? SwapToOneHand(holder, self, baseDamageDiceSize) : SwapToTwoHands(holder, self, upgradedDamageDiceSize));
-            item.StateCheckWhenWielded = (Creature wielder, Item item) =>
-            {
-                if (wielder.FindQEffect(TwoHandStateCheckQEffectId) == null)
-                {
-                    wielder.AddQEffect(TwoHandStateCheck(item, baseDamageDiceSize, upgradedDamageDiceSize));
-                }
-            };
-            return item;
-        }
-
-        // Produce a CombatAction for the given Item, which changes the item to its two-handed form.
-        private static CombatAction SwapToTwoHands(Creature owner, Item item, int diceSize)
-        {
-            var lastAction = owner.Actions.ActionHistoryThisTurn.LastOrDefault();
-             bool lastActionWasToGrip = lastAction?.Item == item && (lastAction?.ActionId == ActionId.DrawItem || lastAction?.ActionId == ActionId.PickUpItem || lastAction?.ActionId == ActionId.ReplaceItemInHand);
-
-            return new CombatAction(owner, ChangeGripArt, $"Change Grip ({item.Name})", [Trait.Interact, Trait.Manipulate],
-                "You Interact to put another hand on the weapon, increasing its weapon damage die to the value indicated in the Two-Hand trait. You must have a free hand.\n\n{b}Special{/b} If your last action was to draw or pick up the weapon, you can Change Grip to wield it two-handed as a free action.",
-                Target.Self().WithAdditionalRestriction((Creature self) =>
-                {
-                    if (!self.HasFreeHand) return "You must have a free hand.";
-                    else return null;
-                })).WithEffectOnSelf((Creature self) =>
-                {
-                    QEffect? weaponState = self.FindQEffect(TwoHandStateCheckQEffectId);
-                    if (weaponState == null) return;
-                    weaponState.Tag = true;
-                }).WithActionCost(lastActionWasToGrip ? 0 : 1).WithShortDescription("Wield your weapon two-handed to deal more damage.");
-        }
-
-        // Produce a CombatAction for the given Item, which changes the item to its one-handed form.
-        private static CombatAction SwapToOneHand(Creature owner, Item item, int diceSize)
-        {
-            return new CombatAction(owner, ChangeGripArt, $"Change Grip ({item.Name})", [Trait.Interact, Trait.Manipulate, Trait.DoesNotProvoke], // releasing technically has the manipulate trait, but doesnt prompt AoOs.
-                "You Release a hand from the weapon, decreasing its weapon damage die to its usual value.",
-                Target.Self()).WithEffectOnSelf((Creature self) =>
-                {
-                    QEffect? weaponState = self.FindQEffect(TwoHandStateCheckQEffectId);
-                    if (weaponState == null) return;
-                    weaponState.Tag = false;
-                }).WithActionCost(0).WithShortDescription("Wield your weapon one-handed, at the expense of reduced damage.");
-        }
-
-        private static QEffectId TwoHandStateCheckQEffectId = ModManager.RegisterEnumMember<QEffectId>("TwoHandStateCheckQEffectId");
-
-        private static QEffect TwoHandStateCheck(Item item, int baseDamageDiceSize, int upgradedDamageDiceSize)
-        {
-            return new QEffect()
-            {
-                Id = TwoHandStateCheckQEffectId,
-                Tag = false, // true for two-handing, false for one-handing
-                StateCheck = (QEffect self) =>
-                {
-                    // TODO: maybe make the player choose how many hands they grab the weapon with as soon as they recieve this effect? for example, if they get passed it and want to hold it in 2 hands, and to smooth out the need to Change Grip when picking it up
-                    if (item.WeaponProperties == null) return;
-                    // item has left the owner's possession; make it one handed and then remove this tracking effect
-                    if (!self.Owner.HeldItems.Contains(item))
-                    {
-                        item.WeaponProperties.DamageDieSize = baseDamageDiceSize;
-                        item.Traits.Remove(Trait.TwoHanded);
-                        self.ExpiresAt = ExpirationCondition.Immediately;
-                    } else
-                    {
-                        if (self.Tag is not bool) return;
-                        // weapon is being held in two hands and hasn't been adjusted yet; add TwoHanded and increase damage
-                        if ((bool)self.Tag == true && !item.Traits.Contains(Trait.TwoHanded))
-                        {
-                            item.WeaponProperties.DamageDieSize = upgradedDamageDiceSize;
-                            item.Traits.Add(Trait.TwoHanded);
-                        }
-                        // weapon is being held in one hand and hasn't been adjusted yet; remove TwoHanded and reset damage
-                        else if ((bool)self.Tag == false && item.Traits.Contains(Trait.TwoHanded))
-                        {
-                            item.WeaponProperties.DamageDieSize = baseDamageDiceSize;
-                            item.Traits.Remove(Trait.TwoHanded);
-                        }
-                    }
-                },
-                StartOfCombat = async (QEffect self) =>
-                {
-                    if (self.Owner.HasFreeHand &&
-                        await self.Owner.AskForConfirmation(item.Illustration, $"How is {self.Owner.Name} holding their {item.Name} at the start of combat?", "Two-handed", "One-handed"))
-                    {
-                        self.Tag = true;
-                    }
-                }
-            };
-        }
 
         private static Item ImplementBrace(this Item item)
         {
@@ -241,6 +196,7 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
             return item;
         }
 
+        // TODO: check this works on ranger, monk, etc. slightly different AoOs
         private static ActionPossibility? BraceYourWeapon(Creature owner, Item item)
         {
             if (!owner.HasEffect(QEffectId.AttackOfOpportunity)) return null;
@@ -249,8 +205,18 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
             string damageString = S.HeightenedVariable(extraDamage, 2);
             return new CombatAction(owner, ChangeGripArt, $"Brace Your Weapon", [Trait.Concentrate],
                 "{i}You ready your weapon to hit unattentive foes where it really hurts.{/i}\n\nYour turn ends immediately when you use this action. Until the start of your next turn, Strikes you make as part of a reaction deal an additional 2 precision damage per weapon damage die (total " + damageString + " damage).",
-                Target.Self()).WithEffectOnSelf((Creature self) =>
+                Target.Self()).WithEffectOnChosenTargets(async (CombatAction action, Creature self, ChosenTargets _) =>
                 {
+                    // confirm if the player wants to waste actions, if they have them left
+                    if (!self.Actions.IsOutOfActions())
+                    {
+                        var endTurn = await self.AskForConfirmation(IllustrationName.EndTurn, "You have actions left that would be wasted. Do you want to Brace your Weapon and end your turn anyway?", "End turn", "No");
+                        if (!endTurn)
+                        {
+                            self.Actions.RevertExpendingOfResources(action.ActionCost, action);
+                            return;
+                        }
+                    }
                     self.AddQEffect(new QEffect("Weapon braced", $"Reaction Strikes deal {damageString} extra precision damage until the start of your next turn.")
                     {
                         YouDealDamageWithStrike = (QEffect self, CombatAction action, DiceFormula diceFormula, Creature defender) =>
@@ -261,7 +227,7 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
                         ExpiresAt = ExpirationCondition.ExpiresAtStartOfYourTurn,
                         Illustration = ChangeGripArt
                     });
-                    // end turn immediately
+                    // End turn immediately
                     self.Actions.ActionsLeft = 0;
                     self.Actions.UsedQuickenedAction = true;
                     self.Actions.WishesToEndTurn = true;

@@ -1,37 +1,36 @@
-﻿using Dawnsbury.Core.CharacterBuilder.AbilityScores;
-using Dawnsbury.Core.CharacterBuilder.Feats;
-using Dawnsbury.Core.Creatures;
-using Dawnsbury.Core.Mechanics.Enumerations;
-using Dawnsbury.Modding;
-using Dawnsbury.Core.Mechanics;
-using Dawnsbury.Core.CombatActions;
-using Dawnsbury.Core.Mechanics.Treasure;
-using Dawnsbury.Core;
-using Dawnsbury.Core.Possibilities;
-using Dawnsbury.Core.Mechanics.Targeting.Targets;
-using Dawnsbury.Core.Mechanics.Targeting;
-using Dawnsbury.Core.Tiles;
-using Dawnsbury.Display.Illustrations;
-using Dawnsbury.Core.CharacterBuilder.Spellcasting;
-using Dawnsbury.Core.CharacterBuilder.FeatsDb.Spellbook;
-using Dawnsbury.Display.Text;
-using Dawnsbury.Core.Mechanics.Core;
+﻿using Dawnsbury.Audio;
 using Dawnsbury.Auxiliary;
-using Dawnsbury.Audio;
-using Microsoft.Xna.Framework;
-using Dawnsbury.Core.Roller;
-using Dawnsbury.Core.Mechanics.Rules;
+using Dawnsbury.Core;
+using Dawnsbury.Core.CharacterBuilder.AbilityScores;
+using Dawnsbury.Core.CharacterBuilder.Feats;
 using Dawnsbury.Core.CharacterBuilder.FeatsDb.Common;
-using System.Diagnostics;
-using Dawnsbury.Display;
+using Dawnsbury.Core.CharacterBuilder.FeatsDb.Spellbook;
+using Dawnsbury.Core.CharacterBuilder.Spellcasting;
+using Dawnsbury.Core.CombatActions;
+using Dawnsbury.Core.Creatures;
+using Dawnsbury.Core.Mechanics;
+using Dawnsbury.Core.Mechanics.Core;
+using Dawnsbury.Core.Mechanics.Enumerations;
+using Dawnsbury.Core.Mechanics.Rules;
+using Dawnsbury.Core.Mechanics.Targeting;
 using Dawnsbury.Core.Mechanics.Targeting.TargetingRequirements;
+using Dawnsbury.Core.Mechanics.Targeting.Targets;
+using Dawnsbury.Core.Mechanics.Treasure;
+using Dawnsbury.Core.Possibilities;
+using Dawnsbury.Core.Roller;
+using Dawnsbury.Core.Tiles;
+using Dawnsbury.Display;
+using Dawnsbury.Display.Illustrations;
+using Dawnsbury.Display.Text;
+using Dawnsbury.Modding;
+using Microsoft.Xna.Framework;
+using System;
+using System.Diagnostics;
 
 namespace Dawnsbury.Mods.Ancestries.Tengu;
 
 // TODO: 
-// * Make tengu feather fan, probably just a boring innate spell. At least try making it go off class DC? and make it extend to ancestry cantrips?
 // * maybe make tengu weapon familiarity grant proficiency with the sword in your hand at the start of combat? proficiency with all swords is a little jank
-// * i think the weapon names might not be actually working on the workshop upload, saw a screenshot where they were just numbers
 // * level 9 feat: Soaring Form - You gain a fly speed. (maybe speed is reduced when flying over stuff?)
 // * level 9 feat: wind god's fan - ugrades tengu feather fan, which i didnt make yet. gotta do that first
 
@@ -39,12 +38,14 @@ public static class TenguAncestryLoader
 {
     public static readonly Trait TenguTrait = ModManager.RegisterTrait("Tengu", new TraitProperties("Tengu", true) { IsAncestryTrait = true });
 
+    public static readonly FeatName SoaringFlightFeatName = ModManager.RegisterFeatName("Soaring Flight {icon:Action}");
+
     [DawnsburyDaysModMainMethod]
     public static void LoadMod()
     {
         // enable the debugger in debug mode, and assert that the right version of the game's DLL is being built against
 #if DEBUG  
-        //Debugger.Launch();
+        Debugger.Launch();
 #endif
         ModManager.AssertV3();
 
@@ -88,11 +89,13 @@ public static class TenguAncestryLoader
                     if (weapon == null || weapon.WeaponProperties == null) return null;
                     if (!weapon.HasTrait(Trait.Melee)) return null;
                     if (weapon.HasTrait(Trait.Unarmed)) return null;
+                    if (weapon.HasTrait(Trait.TwoHanded)) return null;
                     // for whatever reason, OverrideItemDamageDie is only checked when the Strike action is created, not when it's used. therefore, we add it to the feat's effect just so that the strike can grab it, then remove it.
                     // TODO: this should use the IncreaseDamageDie thing instead if the weapon isnt Two-Hand, so that it doesnt stack with other dice increasing effects like deadly simplicity. This is only gonna happen with a very very strange multiclass build, so low priority
-                    self.OverrideItemDamageDie = (QEffect qf, Item weapon, StrikeModifiers strikeModifiers) =>
+                    self.OverrideItemDamageDie = (QEffect qf, Item weapon2, StrikeModifiers strikeModifiers) =>
                         {
-                            if (Items.WeaponHasTwoHand(weapon, out Dice d)) return d;
+                            //if (Items.WeaponHasTwoHand(weapon, out Dice d)) return d;
+                            if (weapon.TwoHandCapable) return (Dice)weapon.WeaponProperties.TwoHandDieSize;
                             else
                             {
                                 int startingSize = weapon.WeaponProperties.DamageDieSize;
@@ -111,7 +114,7 @@ public static class TenguAncestryLoader
                     combatAction.Illustration = new SideBySideIllustration(combatAction.Illustration, Items.ChangeGripArt);
                     combatAction.ActionCost = 1;
                     combatAction.Traits.AddRange([Trait.Fighter, Trait.Flourish, Trait.Basic]);
-                    string addedDamageText = Items.WeaponHasTwoHand(weapon) ?
+                    string addedDamageText = weapon.TwoHandCapable ?
                         $"which grants the benefit of the Two-Hand trait as well as a +{weapon.WeaponProperties.DamageDieCount} circumstance bonus to damage for this attack." :
                         "which increases the weapon's damage dice by one step for this attack.";
                     combatAction.Description = StrikeRules.CreateBasicStrikeDescription2(combatAction.StrikeModifiers, weaponDieIncreased: true, additionalAftertext: "You resume gripping the weapon with only one hand. This doesn't end any stance or effect that requires you to have one hand free.", additionalAttackRollText: "You quickly switch your grip during the Strike in order to make the attack with two hands, " + addedDamageText);
@@ -122,7 +125,7 @@ public static class TenguAncestryLoader
                 {
                     Item? weapon = self.Owner.PrimaryWeapon;
                     if (weapon == null || weapon.WeaponProperties == null) return null;
-                    if (action.Name == name && Items.WeaponHasTwoHand(weapon))
+                    if (action.Name == name && weapon.TwoHandCapable)
                         return new Bonus(weapon.WeaponProperties.DamageDieCount, BonusType.Circumstance, "Dual-Handed Assault", true);
                     else return null;
                 };
@@ -359,14 +362,14 @@ public static class TenguAncestryLoader
 
         // Soaring Flight
         yield return new TrueFeat(
-            ModManager.RegisterFeatName("Soaring Flight {icon:Action}"),
+            SoaringFlightFeatName,
             5,
             "You take to the skies, if only for a moment.",
             "{b}Frequency{/b} once per round\n\nYou make a 20ft Leap. This Leap is high enough to go above other creatures.\n\n{b}Special{/b} If you also have the Powerful Leap feat, your Leap goes 5ft further.\n\n{i}(This action can be found in 'Other actions'.){/i}",
             [TenguTrait]
             ).WithOnCreature((Creature cr) =>
             {
-                cr.AddQEffect(new QEffect("Soaring Flight {icon:Action}", "Make a short Leap which doesn't trigger reactions to movement.")
+                cr.AddQEffect(new QEffect("Soaring Flight {icon:Action}", "Fly up to your speed, landing at the end of the movement.")
                 {
                     ProvideActionIntoPossibilitySection = (QEffect self, PossibilitySection section) =>
                     {
@@ -380,20 +383,90 @@ public static class TenguAncestryLoader
                 });
             });
         // Tengu Feather Fan
-        //Spell gustOfWind = AllSpells.CreateModernSpellTemplate(SpellId.PushingGust, TenguTrait);
-        //yield return new TrueFeat(
-        //    ModManager.RegisterFeatName("Tengu Feather Fan"),
-        //    5,
-        //    "You've learned to bind some of your feathers together into a fan to focus your ancestral magic.",
-        //    "descriptive text",
-        //    [TenguTrait]
-        //    ).WithOnCreature((Creature cr) =>
-        //    {
-        //        cr.GetOrCreateSpellcastingSource(SpellcastingKind.Innate, TenguTrait, Ability.Charisma, Trait.Primal).WithSpells([gustOfWind.SpellId], cr.MaximumSpellRank);
-        //    }).WithOnSheet((calculatedSheet) =>
-        //    {
-        //        calculatedSheet.SetProficiency(Trait.Spell, Proficiency.Trained);
-        //   });
+        /*
+        Spell gustOfWind = AllSpells.CreateModernSpellTemplate(SpellId.BurningHands, TenguTrait);
+        Spell wallOfFire = AllSpells.CreateModernSpellTemplate(SpellId.WallOfFire, TenguTrait);
+        yield return new TrueFeat(
+            ModManager.RegisterFeatName("Tengu Feather Fan"),
+            5,
+            "You've learned to bind some of your feathers together into a fan to focus your ancestral magic.",
+            $"You can cast {gustOfWind.ToSpellLink()} as a 1st-level divine innate spell. Your spellcasting ability for this spell is Charisma.\n" +
+            $"These innate spells work differently than usual. You gain one tengu spell charge per day which you can use to cast any tengu spell you know. Further feats may give you access to additional tengu spells and charges, which you can spend to cast any of your known tengu spells; for example, if you took the Wind God's Fan feat to learn {{i}}{wallOfFire.Name.ToLower()}{{/i}} and gain a second tengu spell charge, you could choose to cast {{i}}{gustOfWind.Name.ToLower()}{{/i}} and {{i}}{wallOfFire.Name.ToLower()}{{/i}} once each per day, or you could cast {{i}}{wallOfFire.Name.ToLower()}{{/i}} twice per day.\n\n" +
+            $"In addition, you gain access to the {{i}}tengu feather fan{{/i}}, a held magic item. While holding a tengu feather fan, the save DC of your tengu spells is the highest of your spell DC and your class DC, and your tengu spells use your highest spellcasting ability modifier instead of Charisma.\n\n{{i}}(The tengu feather fan item is found in the 'Other' category in the store.){{/i}}",
+            [TenguTrait]
+            ).WithOnCreature((Creature cr) =>
+            {
+                // add regular innate spell
+                //cr.GetOrCreateSpellcastingSource(SpellcastingKind.Spontaneous, TenguTrait, Ability.Charisma, Trait.Primal).WithSpontaneousSlots(1).WithSpells([gustOfWind.SpellId], 1);
+                // handle feather fan DC modification
+                cr.AddQEffect(new QEffect()
+                {
+                    BonusToSpellSaveDCsForSpecificSpell = (QEffect self, CombatAction action) =>
+                    {
+                        // only apply if condition owner is holding a feather fan
+                        if (!self.Owner.HeldItems.Select(item => item.MainTrait == Items.TenguFeatherFan).Any()) return null;
+                        if (action.SpellcastingSource == null) return null;
+                        // if spell is a tengu spell with a saving throw, and the character's ClassOrSpellDC is better, swap the DC for that instead
+                        if (action.SpellcastingSource.ClassOfOrigin == TenguTrait
+                            && action.SavingThrow != null
+                            && action.Owner.ClassOrSpellDC() > action.SpellcastingSource.GetSpellSaveDC())
+                        {
+                            action.WithSavingThrow(new SavingThrow(action.SavingThrow.Defense, action.Owner.ClassOrSpellDC()));
+                        }
+                        return null;
+                    },
+                    BonusToAttackRolls = (QEffect self, CombatAction action, Creature? defender) =>
+                    {
+                        // only apply if condition owner is holding a feather fan
+                        if (!self.Owner.HeldItems.Select(item => item.MainTrait == Items.TenguFeatherFan).Any()) return null;
+                        if (action.SpellcastingSource == null) return null;
+                        // HOMEBREW: if action is a tengu attack spell, swap the spellcasting ability to the highest one (so that the tengu attack cantrips also benefit)
+                        if ((action.HasTrait(Trait.Cantrip) || action.HasTrait(Trait.Spell))
+                            && action.SpellcastingSource.ClassOfOrigin == TenguTrait
+                            && action.HasTrait(Trait.Attack))
+                        {
+                            Ability bestSpellcastingAbility = action.SpellcastingSource.Spellcasting.Sources.MaxBy(source => source.SpellcastingAbilityModifier).SpellcastingAbility;
+                            //action.SpellcastingSource.SpellcastingAbility = bestSpellcastingAbility;
+                            action.SpellcastingSource = new SpellcastingSource(
+                                action.SpellcastingSource.Spellcasting,
+                                action.SpellcastingSource.Kind,
+                                bestSpellcastingAbility,
+                                action.SpellcastingSource.SpellcastingTradition,
+                                action.SpellcastingSource.ClassOfOrigin);
+                        }
+                        return null;
+                    }
+                });
+            }).WithOnSheet((calculatedSheet) =>
+            {
+                calculatedSheet.SetProficiency(Trait.Spell, Proficiency.Trained);
+            });
+
+        yield return new TrueFeat(
+            ModManager.RegisterFeatName("Wind God's Fan"),
+            9,
+            "Your fan can stir up even more powerful winds.",
+            $"You gain an additional tengu spell charge every day.\n" +
+            $"Add 3rd-level {wallOfFire.ToSpellLink()} to your list of tengu feather fan spells.",
+            [TenguTrait]
+            ).WithOnCreature((Creature cr) =>
+            {
+                //cr.GetOrCreateSpellcastingSource(SpellcastingKind.Spontaneous, TenguTrait, Ability.Charisma, Trait.Primal).WithSpontaneousSlots(0, 0, 2).WithSpells([wallOfFire.SpellId], 3);
+            });
+        */
+        // Soaring Form
+        yield return new TrueFeat(
+            ModManager.RegisterFeatName("Soaring Form"),
+            9,
+            "With experience your wings have grown strong, capable of carrying you great distances.",
+            "{b}Prerequisites{/b} Soaring Flight\nYou have a fly speed at all times {i}(You ignore difficult and hazardous terrain and can move over water, lava and chasms.){/i}",
+            [TenguTrait]
+            ).WithPrerequisite(SoaringFlightFeatName, "Soaring Flight")
+            .WithOnCreature((Creature cr) =>
+            {
+                cr.AddQEffect(QEffect.Flying());
+            });
+
     }
 
     static IEnumerable<Feat> GetHeritages()
