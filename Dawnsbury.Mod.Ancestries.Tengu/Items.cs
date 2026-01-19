@@ -36,7 +36,7 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
         static public readonly Trait Wakizashi = ModManager.RegisterTrait("Wakizashi", new TraitProperties("Wakizashi", false));
         static public readonly Trait TenguGaleBlade = ModManager.RegisterTrait("TenguGaleBlade", new TraitProperties("Tengu Gale Blade", false));
         static public readonly Trait Nodachi = ModManager.RegisterTrait("Nodachi", new TraitProperties("Nodachi", false));
-        //static public readonly Trait BastardSword = ModManager.RegisterTrait("BastardSword", new TraitProperties("Bastard Sword", false));
+        static public readonly Trait BastardSword = ModManager.RegisterTrait("BastardSword", new TraitProperties("Bastard Sword", false));
         //static public readonly Trait TenguFeatherFan = ModManager.RegisterTrait("TenguFeatherFan", new TraitProperties("Tengu Feather Fan", false));
 
         static public readonly Illustration ChangeGripArt = new ModdedIllustration("TenguAssets/changeGrip.png");
@@ -98,14 +98,14 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
                     WeaponProperties = new WeaponProperties("1d8", DamageKind.Slashing)
                 }.WithMainTrait(Nodachi).ImplementBrace();
             });
-            //ModManager.RegisterNewItemIntoTheShop("bastard sword", (ItemName name) =>
-            //{
-            //    return new Item(name, new ModdedIllustration("TenguAssets/bastardSword.png"), "bastard sword", level: 0, price: 4,
-            //        [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, TwoHandD12, Trait.Mod])
-            //    {
-            //        WeaponProperties = new WeaponProperties("1d8", DamageKind.Slashing)
-            //    }.WithMainTrait(BastardSword).ImplementTwoHand(8, 12);
-            //});
+            ModManager.RegisterNewItemIntoTheShop("bastard sword", (ItemName name) =>
+            {
+                return new Item(name, new CornerIllustration(new ModdedIllustration("TenguAssets/bastardSword.png"), IllustrationName.RedWarning, Direction.Southeast), "bastard sword", level: 0, price: 4,
+                    [Trait.Weapon, Trait.Melee, Trait.Martial, Trait.Sword, Trait.Mod, Trait.SellsAtFullPrice, Trait.DoNotAddToShop])
+                {
+                    WeaponProperties = new WeaponProperties("1d8", DamageKind.Slashing)
+                }.WithMainTrait(BastardSword).WithDescription("{icon:RedWarning}{Red}{b}Mod Note{/b} This bastard sword is an outdated modded item, which lacks the Two-Hand trait. Sell it and use the newer base game version of the item instead.{/Red} (This item sells at full price instead of half, so you can reclaim its full value.)");
+            });
             //ModManager.RegisterNewItemIntoTheShop("tengu feather fan", (ItemName name) =>
             //{
             //    Illustration fanArt = new ModdedIllustration("TenguAssets/tenguFeatherFan.png");
@@ -157,33 +157,33 @@ namespace Dawnsbury.Mods.Ancestries.Tengu
             //            });
             //        }
             //    };
-                
-                
-                //.WithMainTrait(TenguFeatherFan)
-                //    .WithDescription("You must be a Tengu with the Tengu Feather Fan feat to use this item.\n\nWhile holding a tengu feather fan, the save DC of your tengu spells is the highest of your spell DC and your class DC, and your tengu spells use your highest spellcasting ability modifier instead of Charisma.")
-                    
-                    
-                    //.WithPermanentQEffectWhenWorn((QEffect self, Item fan) =>
-                    //{
-                    //    CombatAction pushingGust = AllSpells.CreateSpellInCombat(SpellId.PushingGust, self.Owner, 1, TenguAncestryLoader.TenguTrait);
-                    //    pushingGust.CastFromScroll = fan;
-                    //    pushingGust.Illustration = new SideBySideIllustration(fanArt, pushingGust.Illustration);
-                    //    pushingGust.Name = "Tengu feather fan {i}(" + pushingGust.Name + "){/i}";
-                    //    Possibility spellPossibility1 = Dawnsbury.Core.Possibilities.Possibilities.CreateSpellPossibility(pushingGust);
-                    //    spellPossibility1.PossibilitySize = PossibilitySize.Half;
-                    //    spellPossibility1.PossibilityGroup = "Use worn item";
 
-                    //    CombatAction wallOfFire = AllSpells.CreateSpellInCombat(SpellId.WallOfFire, self.Owner, 4, TenguAncestryLoader.TenguTrait);
-                    //    wallOfFire.CastFromScroll = fan;
-                    //    wallOfFire.Illustration = new SideBySideIllustration(fanArt, wallOfFire.Illustration);
-                    //    wallOfFire.Name = "Tengu feather fan {i}(" + wallOfFire.Name + "){/i}";
-                    //    Possibility spellPossibility2 = Dawnsbury.Core.Possibilities.Possibilities.CreateSpellPossibility(wallOfFire);
-                    //    spellPossibility2.PossibilitySize = PossibilitySize.Half;
-                    //    spellPossibility2.PossibilityGroup = "Use worn item";
 
-                    //    self.ProvideActionsIntoPossibilitySection = (QEffect self, PossibilitySection section) => section.PossibilitySectionId == PossibilitySectionId.ItemActions ? [spellPossibility1, spellPossibility2] : [];
-                    //});
-            });
+            //.WithMainTrait(TenguFeatherFan)
+            //    .WithDescription("You must be a Tengu with the Tengu Feather Fan feat to use this item.\n\nWhile holding a tengu feather fan, the save DC of your tengu spells is the highest of your spell DC and your class DC, and your tengu spells use your highest spellcasting ability modifier instead of Charisma.")
+
+
+            //.WithPermanentQEffectWhenWorn((QEffect self, Item fan) =>
+            //{
+            //    CombatAction pushingGust = AllSpells.CreateSpellInCombat(SpellId.PushingGust, self.Owner, 1, TenguAncestryLoader.TenguTrait);
+            //    pushingGust.CastFromScroll = fan;
+            //    pushingGust.Illustration = new SideBySideIllustration(fanArt, pushingGust.Illustration);
+            //    pushingGust.Name = "Tengu feather fan {i}(" + pushingGust.Name + "){/i}";
+            //    Possibility spellPossibility1 = Dawnsbury.Core.Possibilities.Possibilities.CreateSpellPossibility(pushingGust);
+            //    spellPossibility1.PossibilitySize = PossibilitySize.Half;
+            //    spellPossibility1.PossibilityGroup = "Use worn item";
+
+            //    CombatAction wallOfFire = AllSpells.CreateSpellInCombat(SpellId.WallOfFire, self.Owner, 4, TenguAncestryLoader.TenguTrait);
+            //    wallOfFire.CastFromScroll = fan;
+            //    wallOfFire.Illustration = new SideBySideIllustration(fanArt, wallOfFire.Illustration);
+            //    wallOfFire.Name = "Tengu feather fan {i}(" + wallOfFire.Name + "){/i}";
+            //    Possibility spellPossibility2 = Dawnsbury.Core.Possibilities.Possibilities.CreateSpellPossibility(wallOfFire);
+            //    spellPossibility2.PossibilitySize = PossibilitySize.Half;
+            //    spellPossibility2.PossibilityGroup = "Use worn item";
+
+            //    self.ProvideActionsIntoPossibilitySection = (QEffect self, PossibilitySection section) => section.PossibilitySectionId == PossibilitySectionId.ItemActions ? [spellPossibility1, spellPossibility2] : [];
+            //});
+            //});
         }
 
 

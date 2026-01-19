@@ -31,7 +31,6 @@ namespace Dawnsbury.Mods.Ancestries.Tengu;
 
 // TODO: 
 // * maybe make tengu weapon familiarity grant proficiency with the sword in your hand at the start of combat? proficiency with all swords is a little jank
-// * level 9 feat: Soaring Form - You gain a fly speed. (maybe speed is reduced when flying over stuff?)
 // * level 9 feat: wind god's fan - ugrades tengu feather fan, which i didnt make yet. gotta do that first
 
 public static class TenguAncestryLoader
