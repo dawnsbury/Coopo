@@ -24,10 +24,8 @@ using Dawnsbury.Core.CharacterBuilder.FeatsDb.Spellbook;
 namespace Dawnsbury.Mods.BattleHarbinger;
 
 // TODO: remaster spells mod can clash cause spells like True Strike are removed (so they cant be prepared). give that a look and try to resolve.
-
 public static class BattleHarbingerLoader
 {
-
     [DawnsburyDaysModMainMethod]
     public static void LoadMod()
     {
@@ -216,7 +214,11 @@ public static class BattleHarbingerLoader
                     }
                 });
             });
+        // Restrict feats that modify the divine font
         AllFeats.All.FirstOrDefault(feat => feat.FeatName == FeatName.VersatileFont)?.Prerequisites.Add(
+            new Prerequisite(sheet => !sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is not available to Battle Harbingers.")
+            );
+        AllFeats.All.FirstOrDefault(feat => feat.FeatName == FeatName.GrantedSpellsFont)?.Prerequisites.Add(
             new Prerequisite(sheet => !sheet.HasFeat(ModFeatName.BattleHarbingerDoctrine), "This feat is not available to Battle Harbingers.")
             );
     }
@@ -299,6 +301,7 @@ public static class BattleHarbingerLoader
                     // Remove all divine font slots (removing the feat doesn't actually work, cause of AtEndOfRecalculation shenanigans)
                     sheet.PreparedSpells[Trait.Cleric].Slots.RemoveAll(slot => slot.Key.StartsWith("HealingFont"));
                     sheet.PreparedSpells[Trait.Cleric].Slots.RemoveAll(slot => slot.Key.StartsWith("HarmfulFont"));
+                    //sheet.PreparedSpells[Trait.Cleric].Slots.RemoveAll(slot => slot.Key.StartsWith("ImprovedVersatileFont"));
                     // make sure to use this instead of sheet.CurrentLevel, that can sometimes be inaccurate
                     int level = sheet.Sheet.MaximumLevel;
 
