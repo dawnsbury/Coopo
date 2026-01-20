@@ -44,9 +44,9 @@ Some mods for Dawnsbury Days that add things I think are cool, primarily Ancestr
     * Uncanny Agility Feat
     * Magpie Snatch Feat
     * Soaring Flight Feat
+    * Soaring Form Feat
     * Dual-Handed Assault Feat (for Fighter)
     * A bunch of swords:
-        * Two-Hand trait
         * Brace trait
         * Katana
         * Wakizashi
@@ -54,7 +54,6 @@ Some mods for Dawnsbury Days that add things I think are cool, primarily Ancestr
         * Temple Sword
         * Tengu Gale Blade
         * Nodachi
-        * Bastard Sword
 * Battle Harbinger class archetype
     * All class features up to level 9
     * All battle aura spells - Bless, Bane, Benediction, and Malediction
@@ -91,6 +90,7 @@ Some mods for Dawnsbury Days that add things I think are cool, primarily Ancestr
 * Magpie Snatch: Completely different - allows you to grab as many items as can fit in your hands with 1 action.
 * Soaring Flight: Functions like a Leap that can go over creatures. Also, can be made stronger by Powerful Leap.
 * Brace trait: Reduced to a single action, and applies the damage bonus to any attacks made with a reaction Strike, because Ready doesn't exist in Dawnsbury Days.
+* Soaring Form: Your fly speed is equal to your land speed, like all other creatures in Dawnsbury Days.
 ### Battle Harbinger
 * Battle Harbinger Dedication: Because archetypes are not implemented in Dawnsbury Days, the archetype is chosen as a doctrine. You also don't have to take the dedication instead of your 2nd level class feat - if you still want it, the new feat Harbinger's Resiliency has identical functionality to the dedication.
 * Battle Font: Instead of the benefits of the battle font applying to all instances of bless and bane, you are granted special versions of the spells named "battle bless" and "battle bane" which use class DC and gain the benefits of battle harbinger feats. Only these versions can be prepared in the font slots, and normal versions of these aura spells are unchanged. (This is mostly for implementation reasons, and if you use these versions exclusively then there should be no mechanical difference.)
